@@ -71,24 +71,39 @@ func (h *Handler) serveInstallScript(w http.ResponseWriter, r *http.Request, fil
 		scheme = "https"
 	}
 	serverURL := scheme + "://" + r.Host
+	if r.Host == "" {
+		serverURL = "http://localhost:9090"
+	}
 
 	tmplBytes, err := web.TemplateFS.ReadFile("templates/" + filename)
 	if err != nil {
 		http.Error(w, "install script not found", http.StatusInternalServerError)
 		return
 	}
+	if len(tmplBytes) == 0 {
+		http.Error(w, "install script empty", http.StatusInternalServerError)
+		return
+	}
 
 	tmpl, err := template.New("install").Parse(string(tmplBytes))
 	if err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		http.Error(w, "template parse error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	var buf strings.Builder
-	tmpl.Execute(&buf, map[string]string{"ServerURL": serverURL})
-	w.Write([]byte(buf.String()))
+	if err := tmpl.Execute(&buf, map[string]string{"ServerURL": serverURL}); err != nil {
+		http.Error(w, "template execute error", http.StatusInternalServerError)
+		return
+	}
+	out := buf.String()
+	if out == "" {
+		http.Error(w, "install script produced empty output", http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte(out))
 }
 
 func (h *Handler) InstallScript(w http.ResponseWriter, r *http.Request) {
