@@ -21,10 +21,13 @@ type Agent struct {
 	CreatedAt     time.Time   `json:"created_at"`
 }
 
-// Name returns display name if set, else agent ID (key).
+// Name returns display name if set, else hostname, else ID (so Name column never shows key when hostname exists).
 func (a *Agent) Name() string {
 	if a.DisplayName != "" {
 		return a.DisplayName
+	}
+	if a.Hostname != "" {
+		return a.Hostname
 	}
 	return a.ID
 }
