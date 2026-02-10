@@ -1,47 +1,46 @@
 {{define "content"}}
-<div class="section-header" style="margin-top:0">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+<div class="section-header">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     Alert Rules
 </div>
 
-<div style="border-radius:12px;border:1px solid rgba(255,255,255,0.04);background:var(--surface);padding:1.2rem;margin-bottom:1.5rem">
-    <form id="ruleForm" onsubmit="createRule(event)">
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end">
-            <div style="flex:1;min-width:150px">
-                <label style="font-size:0.75rem;color:#6c7086;margin-bottom:0.3rem;display:block">Metric</label>
-                <select id="ruleMetric" required style="margin:0">
-                    <option value="">Select metric</option>
-                    <option value="cpu_percent">CPU %</option>
-                    <option value="memory_percent">Memory %</option>
-                    <option value="disk_percent">Disk %</option>
-                </select>
-            </div>
-            <div style="min-width:120px">
-                <label style="font-size:0.75rem;color:#6c7086;margin-bottom:0.3rem;display:block">Condition</label>
-                <select id="ruleOperator" required style="margin:0">
-                    <option value=">">&#62; greater than</option>
-                    <option value=">=">&#62;= greater or equal</option>
-                    <option value="<">&#60; less than</option>
-                    <option value="<=">&#60;= less or equal</option>
-                </select>
-            </div>
-            <div style="min-width:100px">
-                <label style="font-size:0.75rem;color:#6c7086;margin-bottom:0.3rem;display:block">Threshold</label>
-                <input type="number" id="ruleThreshold" placeholder="90" step="0.1" required style="margin:0">
-            </div>
-            <button type="submit" style="margin:0;background:var(--accent);white-space:nowrap">Add Rule</button>
+<div style="background:var(--surface);padding:1.5rem;border-radius:12px;border:1px solid rgba(255,255,255,0.05);margin-bottom:2rem">
+    <form method="POST" action="/api/v1/alerts/rules" style="display:grid;grid-template-columns:1fr 1fr 100px 1fr auto;gap:0.8rem;align-items:end">
+        <div>
+            <label style="font-size:0.85rem;font-weight:600;color:var(--dim);margin-bottom:0.3rem;display:block">Metric</label>
+            <select name="metric" style="margin:0">
+                <option value="cpu">CPU Usage</option>
+                <option value="memory">Memory Usage</option>
+                <option value="disk">Disk Usage</option>
+            </select>
         </div>
+        <div>
+            <label style="font-size:0.85rem;font-weight:600;color:var(--dim);margin-bottom:0.3rem;display:block">Operator</label>
+            <select name="operator" style="margin:0">
+                <option value=">">&gt; Greater than</option>
+                <option value="<">&lt; Less than</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.85rem;font-weight:600;color:var(--dim);margin-bottom:0.3rem;display:block">Value %</label>
+            <input type="number" name="threshold" placeholder="90" min="0" max="100" style="margin:0">
+        </div>
+        <div>
+            <label style="font-size:0.85rem;font-weight:600;color:var(--dim);margin-bottom:0.3rem;display:block">Agent (optional)</label>
+            <input type="text" name="agent_id" placeholder="All agents" style="margin:0">
+        </div>
+        <button type="submit" class="btn-accent" style="margin:0">Add Rule</button>
     </form>
 </div>
 
-<div style="overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.04);">
-<table style="margin:0">
+<div class="table-wrap" style="margin-bottom:2rem">
+<table>
     <thead>
         <tr>
             <th>Metric</th>
-            <th>Condition</th>
+            <th>Operator</th>
             <th>Threshold</th>
-            <th>Created</th>
+            <th>Agent</th>
             <th></th>
         </tr>
     </thead>
@@ -49,35 +48,36 @@
         {{range .Rules}}
         <tr>
             <td>
-                {{if eq .Metric "cpu_percent"}}<span class="badge badge-info">CPU %</span>
-                {{else if eq .Metric "memory_percent"}}<span class="badge badge-warning">Memory %</span>
-                {{else}}<span class="badge badge-offline">Disk %</span>
-                {{end}}
+                {{if eq .Metric "cpu"}}<span class="badge badge-info">CPU</span>
+                {{else if eq .Metric "memory"}}<span class="badge badge-warning">Memory</span>
+                {{else}}<span class="badge badge-offline">Disk</span>{{end}}
             </td>
             <td><code>{{.Operator}}</code></td>
             <td><strong>{{printf "%.0f" .Threshold}}%</strong></td>
-            <td><small style="color:#6c7086">{{timeAgo .CreatedAt}}</small></td>
-            <td><button class="outline secondary btn-sm" onclick="deleteRule({{.ID}})">Delete</button></td>
+            <td>{{if .AgentID}}{{.AgentID}}{{else}}<span class="text-muted">All</span>{{end}}</td>
+            <td>
+                <button class="outline secondary btn-sm" onclick="if(confirm('Delete this rule?'))fetch('/api/v1/alerts/rules/'+{{.ID}},{method:'DELETE'}).then(()=>location.reload())">Delete</button>
+            </td>
         </tr>
         {{else}}
-        <tr><td colspan="5" style="text-align:center;padding:1.5rem;color:#45475a">No alert rules defined. Add one above to start monitoring.</td></tr>
+        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--dim)">No rules defined.</td></tr>
         {{end}}
     </tbody>
 </table>
 </div>
 
 <div class="section-header">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     Recent Alerts
 </div>
 
-<div style="overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.04);">
-<table style="margin:0">
+<div class="table-wrap">
+<table>
     <thead>
         <tr>
             <th>Agent</th>
+            <th>Metric</th>
             <th>Message</th>
-            <th>Status</th>
             <th>Time</th>
         </tr>
     </thead>
@@ -85,43 +85,21 @@
         {{range .Alerts}}
         <tr>
             <td><a href="/ui/agents/{{.AgentID}}">{{.AgentID}}</a></td>
-            <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis">{{.Message}}</td>
             <td>
-                {{if .Resolved}}
-                <span class="badge badge-online">Resolved</span>
-                {{else}}
-                <span class="badge badge-offline">Active</span>
-                {{end}}
+                {{if eq .Metric "cpu"}}<span class="badge badge-info">CPU</span>
+                {{else if eq .Metric "memory"}}<span class="badge badge-warning">Memory</span>
+                {{else if eq .Metric "disk"}}<span class="badge badge-offline">Disk</span>
+                {{else}}<span class="badge badge-offline">{{.Metric}}</span>{{end}}
             </td>
-            <td><small style="color:#6c7086">{{timeAgo .CreatedAt}}</small></td>
+            <td>{{.Message}}</td>
+            <td class="text-muted text-sm">{{timeAgo .CreatedAt}}</td>
         </tr>
         {{else}}
-        <tr><td colspan="4" style="text-align:center;padding:1.5rem;color:#45475a">No alerts triggered yet.</td></tr>
+        <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--dim)">No alerts triggered yet.</td></tr>
         {{end}}
     </tbody>
 </table>
 </div>
 
-<script>
-async function createRule(e) {
-    e.preventDefault();
-    const body = {
-        metric: document.getElementById('ruleMetric').value,
-        operator: document.getElementById('ruleOperator').value,
-        threshold: parseFloat(document.getElementById('ruleThreshold').value)
-    };
-    await fetch('/api/v1/alerts/rules', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(body)
-    });
-    location.reload();
-}
-
-async function deleteRule(id) {
-    if (!confirm('Delete this rule?')) return;
-    await fetch('/api/v1/alerts/rules/' + id, {method: 'DELETE'});
-    location.reload();
-}
-</script>
+<script>setTimeout(function(){ location.reload(); }, 30000);</script>
 {{end}}
