@@ -9,7 +9,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=1.0.0" -o /agent ./cm
 
 FROM alpine:3.19
 LABEL org.opencontainers.image.source="https://github.com/cevrimxe/go-mini-rmm"
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata docker-cli
 WORKDIR /app
 
 COPY --from=builder /agent .
