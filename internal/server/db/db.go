@@ -247,3 +247,62 @@ func (s *Store) ResolveAlert(id int64) error {
 	_, err := s.db.Exec(`UPDATE alerts SET resolved=1 WHERE id=?`, id)
 	return err
 }
+
+// ---- Users ----
+
+func (s *Store) HasUsers() (bool, error) {
+	var count int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
+	return count > 0, err
+}
+
+func (s *Store) CreateUser(username, passwordHash string) error {
+	_, err := s.db.Exec(`INSERT INTO users (username, password_hash) VALUES (?, ?)`, username, passwordHash)
+	return err
+}
+
+func (s *Store) GetUserByUsername(username string) (*models.User, error) {
+	var u models.User
+	err := s.db.QueryRow(`SELECT id, username, password_hash, created_at FROM users WHERE username=?`, username).
+		Scan(&u.ID, &u.Username, &u.PasswordHash, &u.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// ---- Sessions ----
+
+func (s *Store) CreateSession(token string, userID int64, expiresAt time.Time) error {
+	_, err := s.db.Exec(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)`, token, userID, expiresAt)
+	return err
+}
+
+func (s *Store) GetUserBySession(token string) (*models.User, error) {
+	var u models.User
+	err := s.db.QueryRow(`
+		SELECT u.id, u.username, u.password_hash, u.created_at
+		FROM users u JOIN sessions s ON u.id = s.user_id
+		WHERE s.token=? AND s.expires_at > ?
+	`, token, time.Now().UTC()).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (s *Store) DeleteSession(token string) error {
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE token=?`, token)
+	return err
+}
+
+func (s *Store) CleanExpiredSessions() error {
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE expires_at < ?`, time.Now().UTC())
+	return err
+}

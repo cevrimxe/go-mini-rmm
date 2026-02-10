@@ -19,7 +19,7 @@
 </div>
 
 <div class="section-header">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
     Agents
 </div>
 
@@ -27,21 +27,23 @@
 <table>
     <thead>
         <tr>
+            <th>Name</th>
             <th>Hostname</th>
             <th>OS</th>
             <th>IP</th>
             <th>Version</th>
             <th>Status</th>
-            <th style="min-width:140px">CPU</th>
-            <th style="min-width:140px">Memory</th>
-            <th style="min-width:140px">Disk</th>
+            <th style="min-width:120px">CPU</th>
+            <th style="min-width:120px">Memory</th>
+            <th style="min-width:120px">Disk</th>
             <th>Last Seen</th>
         </tr>
     </thead>
     <tbody>
         {{range .Agents}}
         <tr>
-            <td><a href="/ui/agents/{{.Agent.ID}}">{{.Agent.Hostname}}</a></td>
+            <td><a href="/ui/agents/{{.Agent.ID}}">{{.Agent.ID}}</a></td>
+            <td class="text-muted">{{.Agent.Hostname}}</td>
             <td class="text-muted">{{.Agent.OS}}</td>
             <td><code>{{.Agent.IP}}</code></td>
             <td>v{{.Agent.Version}}</td>
@@ -54,38 +56,38 @@
             </td>
             <td>
                 {{if .Metric}}
-                <div style="display:flex;align-items:center;gap:0.6rem">
+                <div style="display:flex;align-items:center;gap:0.5rem">
                     <div class="metric-bar" style="flex:1">
                         <div class="metric-bar-fill {{metricColor .Metric.CPUPercent}}" style="width:{{printf "%.0f" .Metric.CPUPercent}}%"></div>
                     </div>
-                    <span style="min-width:40px;text-align:right;color:var(--muted)">{{printf "%.0f" .Metric.CPUPercent}}%</span>
+                    <span style="min-width:32px;text-align:right;color:var(--muted);font-size:0.75rem">{{printf "%.0f" .Metric.CPUPercent}}%</span>
                 </div>
                 {{else}}<span class="text-muted">--</span>{{end}}
             </td>
             <td>
                 {{if .Metric}}
-                <div style="display:flex;align-items:center;gap:0.6rem">
+                <div style="display:flex;align-items:center;gap:0.5rem">
                     <div class="metric-bar" style="flex:1">
                         <div class="metric-bar-fill {{metricColor .Metric.MemoryPercent}}" style="width:{{printf "%.0f" .Metric.MemoryPercent}}%"></div>
                     </div>
-                    <span style="min-width:40px;text-align:right;color:var(--muted)">{{printf "%.0f" .Metric.MemoryPercent}}%</span>
+                    <span style="min-width:32px;text-align:right;color:var(--muted);font-size:0.75rem">{{printf "%.0f" .Metric.MemoryPercent}}%</span>
                 </div>
                 {{else}}<span class="text-muted">--</span>{{end}}
             </td>
             <td>
                 {{if .Metric}}
-                <div style="display:flex;align-items:center;gap:0.6rem">
+                <div style="display:flex;align-items:center;gap:0.5rem">
                     <div class="metric-bar" style="flex:1">
                         <div class="metric-bar-fill {{metricColor .Metric.DiskPercent}}" style="width:{{printf "%.0f" .Metric.DiskPercent}}%"></div>
                     </div>
-                    <span style="min-width:40px;text-align:right;color:var(--muted)">{{printf "%.0f" .Metric.DiskPercent}}%</span>
+                    <span style="min-width:32px;text-align:right;color:var(--muted);font-size:0.75rem">{{printf "%.0f" .Metric.DiskPercent}}%</span>
                 </div>
                 {{else}}<span class="text-muted">--</span>{{end}}
             </td>
             <td class="text-muted text-sm">{{timeAgo .Agent.LastHeartbeat}}</td>
         </tr>
         {{else}}
-        <tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--dim)">No agents registered yet. Run the install script to add one.</td></tr>
+        <tr><td colspan="10" style="text-align:center;padding:2.5rem;color:var(--dim)">No agents registered yet.</td></tr>
         {{end}}
     </tbody>
 </table>

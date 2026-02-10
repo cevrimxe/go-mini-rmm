@@ -1,19 +1,19 @@
 {{define "content"}}
-<div style="margin-bottom:0.5rem">
-    <a href="/" style="color:var(--accent);text-decoration:none;font-size:0.9rem">&larr; Dashboard</a>
+<div style="margin-bottom:0.4rem">
+    <a href="/" style="color:var(--accent);text-decoration:none;font-size:0.8rem">&larr; Dashboard</a>
 </div>
 
-<div style="margin-bottom:2rem">
-    <h2 style="margin:0;display:flex;align-items:center;gap:0.8rem;font-size:1.6rem">
-        {{.Agent.Hostname}}
+<div style="margin-bottom:1.5rem">
+    <h2 style="margin:0;display:flex;align-items:center;gap:0.6rem;font-size:1.3rem">
+        {{.Agent.ID}}
         {{if eq (printf "%s" .Agent.Status) "online"}}
         <span class="badge badge-online">Online</span>
         {{else}}
         <span class="badge badge-offline">Offline</span>
         {{end}}
     </h2>
-    <p style="margin:0.4rem 0 0 0;color:var(--dim);font-size:1rem">
-        {{.Agent.OS}} &middot; {{.Agent.IP}} &middot; v{{.Agent.Version}} &middot; Last seen {{timeAgo .Agent.LastHeartbeat}}
+    <p style="margin:0.3rem 0 0 0;color:var(--dim);font-size:0.82rem">
+        {{.Agent.Hostname}} &middot; {{.Agent.OS}} &middot; {{.Agent.IP}} &middot; v{{.Agent.Version}} &middot; Last seen {{timeAgo .Agent.LastHeartbeat}}
     </p>
 </div>
 
@@ -22,7 +22,7 @@
         <h3>CPU Usage</h3>
         {{if .Metric}}
         <div class="value" style="color:{{if ge .Metric.CPUPercent 90.0}}var(--red){{else if ge .Metric.CPUPercent 70.0}}var(--yellow){{else}}var(--green){{end}}">{{printf "%.1f" .Metric.CPUPercent}}%</div>
-        <div class="metric-bar" style="margin-top:0.6rem">
+        <div class="metric-bar" style="margin-top:0.5rem">
             <div class="metric-bar-fill {{metricColor .Metric.CPUPercent}}" style="width:{{printf "%.0f" .Metric.CPUPercent}}%"></div>
         </div>
         {{else}}<div class="value text-muted">--</div>{{end}}
@@ -31,7 +31,7 @@
         <h3>Memory Usage</h3>
         {{if .Metric}}
         <div class="value" style="color:{{if ge .Metric.MemoryPercent 90.0}}var(--red){{else if ge .Metric.MemoryPercent 70.0}}var(--yellow){{else}}var(--green){{end}}">{{printf "%.1f" .Metric.MemoryPercent}}%</div>
-        <div class="metric-bar" style="margin-top:0.6rem">
+        <div class="metric-bar" style="margin-top:0.5rem">
             <div class="metric-bar-fill {{metricColor .Metric.MemoryPercent}}" style="width:{{printf "%.0f" .Metric.MemoryPercent}}%"></div>
         </div>
         {{else}}<div class="value text-muted">--</div>{{end}}
@@ -40,7 +40,7 @@
         <h3>Disk Usage</h3>
         {{if .Metric}}
         <div class="value" style="color:{{if ge .Metric.DiskPercent 90.0}}var(--red){{else if ge .Metric.DiskPercent 70.0}}var(--yellow){{else}}var(--green){{end}}">{{printf "%.1f" .Metric.DiskPercent}}%</div>
-        <div class="metric-bar" style="margin-top:0.6rem">
+        <div class="metric-bar" style="margin-top:0.5rem">
             <div class="metric-bar-fill {{metricColor .Metric.DiskPercent}}" style="width:{{printf "%.0f" .Metric.DiskPercent}}%"></div>
         </div>
         {{else}}<div class="value text-muted">--</div>{{end}}
@@ -48,20 +48,18 @@
 </div>
 
 <div class="section-header">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
     Remote Terminal
 </div>
 
-<div style="display:flex;gap:0.6rem;margin-bottom:1rem">
-    <input type="text" id="cmdInput" placeholder="Enter command... (whoami, df -h, systemctl status, ipconfig /all)" style="flex:1;margin:0;font-size:1rem">
-    <button onclick="sendCommand()" class="btn-accent" id="cmdBtn" style="margin:0;white-space:nowrap">
-        Run
-    </button>
+<div style="display:flex;gap:0.5rem;margin-bottom:0.8rem">
+    <input type="text" id="cmdInput" placeholder="Enter command... (whoami, df -h, ipconfig /all)" style="flex:1;margin:0">
+    <button onclick="sendCommand()" class="btn-accent" id="cmdBtn" style="margin:0;white-space:nowrap">Run</button>
 </div>
 <div id="cmdOutput" class="terminal-output" style="display:none"></div>
 
 <div class="section-header">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     Command History
 </div>
 
@@ -108,20 +106,15 @@ const cmdInput = document.getElementById('cmdInput');
 const cmdBtn = document.getElementById('cmdBtn');
 const cmdOutput = document.getElementById('cmdOutput');
 
-// Enter key to send
-cmdInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') sendCommand();
-});
+cmdInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendCommand(); });
 
 async function sendCommand() {
     const cmd = cmdInput.value.trim();
     if (!cmd) return;
-
     cmdOutput.style.display = 'block';
     cmdOutput.textContent = '$ ' + cmd + '\n';
     cmdBtn.disabled = true;
     cmdBtn.textContent = 'Running...';
-
     try {
         const resp = await fetch('/api/v1/agents/' + agentID + '/command', {
             method: 'POST',
@@ -129,7 +122,6 @@ async function sendCommand() {
             body: JSON.stringify({command: cmd})
         });
         const data = await resp.json();
-
         let attempts = 0;
         const poll = setInterval(async () => {
             attempts++;
@@ -149,20 +141,12 @@ async function sendCommand() {
         done();
     }
 }
-
-function done() {
-    cmdBtn.disabled = false;
-    cmdBtn.textContent = 'Run';
-    cmdInput.value = '';
-    cmdInput.focus();
-}
-
+function done() { cmdBtn.disabled = false; cmdBtn.textContent = 'Run'; cmdInput.value = ''; cmdInput.focus(); }
 function showOutput(stdout, stderr, cmd) {
     cmdOutput.style.display = 'block';
     cmdOutput.textContent = '$ ' + cmd + '\n' + (stdout || '(no output)');
     if (stderr) cmdOutput.textContent += '\n--- stderr ---\n' + stderr;
 }
-
 setTimeout(function(){ location.reload(); }, 30000);
 </script>
 {{end}}

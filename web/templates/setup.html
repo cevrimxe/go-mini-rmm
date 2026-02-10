@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - Mini RMM</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: #11111b;
+            color: #cdd6f4;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background: #1e1e2e;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .logo svg { color: #22c55e; margin-bottom: 0.5rem; }
+        .logo h1 { font-size: 1.4rem; font-weight: 700; }
+        .logo p { font-size: 0.85rem; color: #6c7086; margin-top: 0.3rem; }
+        .info {
+            background: rgba(99,102,241,0.1);
+            color: #a6adc8;
+            padding: 0.7rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            line-height: 1.4;
+        }
+        label { display:block; font-size:0.8rem; font-weight:600; color:#6c7086; margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.04em; }
+        input {
+            width: 100%;
+            padding: 0.65rem 0.9rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: #181825;
+            color: #cdd6f4;
+            font-size: 0.9rem;
+            margin-bottom: 1.2rem;
+            outline: none;
+            transition: border 0.15s;
+        }
+        input:focus { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
+        input::placeholder { color: #45475a; }
+        button {
+            width: 100%;
+            padding: 0.7rem;
+            border-radius: 10px;
+            border: none;
+            background: #22c55e;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        button:hover { background: #4ade80; }
+        .error {
+            background: rgba(239,68,68,0.12);
+            color: #ef4444;
+            padding: 0.6rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1.2rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <h1>Mini RMM - İlk Kurulum</h1>
+            <p>Yönetici hesabı oluşturun</p>
+        </div>
+        <div class="info">İlk kullanıcı hesabını oluşturun. Bu hesapla dashboard'a giriş yapabileceksiniz.</div>
+        {{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+        <form method="POST" action="/setup">
+            <label>Kullanıcı Adı</label>
+            <input type="text" name="username" placeholder="admin" autofocus required>
+            <label>Şifre</label>
+            <input type="password" name="password" placeholder="En az 6 karakter" required>
+            <label>Şifre Tekrar</label>
+            <input type="password" name="confirm" placeholder="Şifreyi tekrar girin" required>
+            <button type="submit">Hesap Oluştur</button>
+        </form>
+    </div>
+</body>
+</html>

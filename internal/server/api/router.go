@@ -23,41 +23,50 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 	alertHandler := &AlertHandler{Store: store, Engine: alertEngine}
 	updateHandler := &update.Handler{}
 	webHandler := NewWebHandler(store, hub)
+	authHandler := NewAuthHandler(store)
 
-	// API routes
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Post("/heartbeat", agentHandler.Heartbeat)
+	// ── Public routes (no auth) ──
+	r.Get("/login", authHandler.LoginPage)
+	r.Post("/login", authHandler.Login)
+	r.Get("/setup", authHandler.SetupPage)
+	r.Post("/setup", authHandler.Setup)
 
-		r.Get("/agents", agentHandler.List)
-		r.Get("/agents/{id}", agentHandler.Get)
-		r.Delete("/agents/{id}", agentHandler.Delete)
-		r.Get("/agents/{id}/metrics", agentHandler.Metrics)
+	// Install scripts
+	r.Get("/install.sh", updateHandler.InstallScript)
+	r.Get("/install.ps1", updateHandler.InstallScriptPS)
 
-		r.Post("/agents/{id}/command", cmdHandler.Send)
-		r.Get("/agents/{id}/commands", cmdHandler.List)
-
-		r.Get("/alerts", alertHandler.ListAlerts)
-		r.Get("/alerts/rules", alertHandler.ListRules)
-		r.Post("/alerts/rules", alertHandler.CreateRule)
-		r.Delete("/alerts/rules/{id}", alertHandler.DeleteRule)
-
-		r.Get("/update/check", updateHandler.Check)
-		r.Get("/update/download", updateHandler.Download)
-	})
+	// Agent communication (API key, not user auth)
+	r.Post("/api/v1/heartbeat", agentHandler.Heartbeat)
+	r.Get("/api/v1/update/check", updateHandler.Check)
+	r.Get("/api/v1/update/download", updateHandler.Download)
 
 	// WebSocket
 	r.Get("/ws/agent", func(w http.ResponseWriter, r *http.Request) {
 		hub.HandleAgentWS(w, r)
 	})
 
-	// Install scripts (one-liner)
-	r.Get("/install.sh", updateHandler.InstallScript)
-	r.Get("/install.ps1", updateHandler.InstallScriptPS)
+	// ── Protected routes (user session required) ──
+	r.Group(func(r chi.Router) {
+		r.Use(authHandler.RequireAuth)
 
-	// Web UI routes (under /ui to avoid conflicts with API)
-	r.Get("/", webHandler.Dashboard)
-	r.Get("/ui/agents/{id}", webHandler.AgentDetail)
-	r.Get("/ui/alerts", webHandler.Alerts)
+		// Web UI
+		r.Get("/", webHandler.Dashboard)
+		r.Get("/ui/agents/{id}", webHandler.AgentDetail)
+		r.Get("/ui/alerts", webHandler.Alerts)
+		r.Post("/logout", authHandler.Logout)
+
+		// Management API
+		r.Get("/api/v1/agents", agentHandler.List)
+		r.Get("/api/v1/agents/{id}", agentHandler.Get)
+		r.Delete("/api/v1/agents/{id}", agentHandler.Delete)
+		r.Get("/api/v1/agents/{id}/metrics", agentHandler.Metrics)
+		r.Post("/api/v1/agents/{id}/command", cmdHandler.Send)
+		r.Get("/api/v1/agents/{id}/commands", cmdHandler.List)
+		r.Get("/api/v1/alerts", alertHandler.ListAlerts)
+		r.Get("/api/v1/alerts/rules", alertHandler.ListRules)
+		r.Post("/api/v1/alerts/rules", alertHandler.CreateRule)
+		r.Delete("/api/v1/alerts/rules/{id}", alertHandler.DeleteRule)
+	})
 
 	// Static files
 	fileServer(r)
