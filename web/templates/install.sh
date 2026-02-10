@@ -4,7 +4,7 @@ set -e
 # Go Mini RMM - Interactive Agent Installer
 # Usage: curl -sSL http://SERVER:PORT/install.sh | bash
 
-SERVER_URL="{{.ServerURL}}"
+SERVER_URL="__RMM_SERVER_URL__"
 INSTALL_DIR="/opt/rmm"
 SERVICE_NAME="rmm-agent"
 

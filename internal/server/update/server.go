@@ -2,7 +2,6 @@ package update
 
 import (
 	"encoding/json"
-	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -85,24 +84,14 @@ func (h *Handler) serveInstallScript(w http.ResponseWriter, r *http.Request, fil
 		return
 	}
 
-	tmpl, err := template.New("install").Parse(string(tmplBytes))
-	if err != nil {
-		http.Error(w, "template parse error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
-	var buf strings.Builder
-	if err := tmpl.Execute(&buf, map[string]string{"ServerURL": serverURL}); err != nil {
-		http.Error(w, "template execute error", http.StatusInternalServerError)
-		return
-	}
-	out := buf.String()
+	// Placeholder replace (no Go template - script has $ and braces that confuse template engine)
+	out := strings.ReplaceAll(string(tmplBytes), "__RMM_SERVER_URL__", serverURL)
 	if out == "" {
 		http.Error(w, "install script produced empty output", http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Write([]byte(out))
 }
 

@@ -1,7 +1,7 @@
 # Go Mini RMM - Windows Agent Installer
 # Usage: irm http://SERVER:PORT/install.ps1 | iex
 
-$ServerURL = "{{.ServerURL}}"
+$ServerURL = "__RMM_SERVER_URL__"
 
 # When piped (irm | iex), Read-Host doesn't work.
 # Download script to temp and re-run interactively.
