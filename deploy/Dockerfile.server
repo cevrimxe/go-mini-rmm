@@ -5,7 +5,16 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+
+# Build server
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /server ./cmd/server
+
+# Build agent binaries for all platforms
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-linux-amd64 ./cmd/agent
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-linux-arm64 ./cmd/agent
+RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-windows-amd64.exe ./cmd/agent
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-darwin-amd64 ./cmd/agent
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-darwin-arm64 ./cmd/agent
 
 FROM alpine:3.19
 LABEL org.opencontainers.image.source="https://github.com/cevrimxe/go-mini-rmm"
@@ -13,6 +22,7 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /server .
+COPY --from=builder /binaries ./binaries/
 
 EXPOSE 8080
 VOLUME ["/app/data"]
