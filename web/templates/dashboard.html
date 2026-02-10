@@ -22,12 +22,14 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
     Agents
 </div>
+<p class="text-muted text-sm" style="margin:-0.5rem 0 0.5rem 0">Key = agent kimliği; heartbeat ve komutlar bu ID ile eşleşir.</p>
 
 <div class="table-wrap">
 <table>
     <thead>
         <tr>
             <th>Name</th>
+            <th>Key</th>
             <th>Hostname</th>
             <th>OS</th>
             <th>IP</th>
@@ -42,7 +44,8 @@
     <tbody>
         {{range .Agents}}
         <tr>
-            <td><a href="/ui/agents/{{.Agent.ID}}">{{.Agent.ID}}</a></td>
+            <td><a href="/ui/agents/{{.Agent.ID}}">{{.Agent.Name}}</a></td>
+            <td><code class="text-sm">{{.Agent.ID}}</code></td>
             <td class="text-muted">{{.Agent.Hostname}}</td>
             <td class="text-muted">{{.Agent.OS}}</td>
             <td><code>{{.Agent.IP}}</code></td>
@@ -87,7 +90,7 @@
             <td class="text-muted text-sm">{{timeAgo .Agent.LastHeartbeat}}</td>
         </tr>
         {{else}}
-        <tr><td colspan="10" style="text-align:center;padding:2.5rem;color:var(--dim)">No agents registered yet.</td></tr>
+        <tr><td colspan="11" style="text-align:center;padding:2.5rem;color:var(--dim)">No agents registered yet.</td></tr>
         {{end}}
     </tbody>
 </table>

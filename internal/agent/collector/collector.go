@@ -7,7 +7,7 @@ import (
 )
 
 // Collect gathers all system metrics and host info into a HeartbeatPayload.
-func Collect(agentID, version string) models.HeartbeatPayload {
+func Collect(agentID, displayName, version string) models.HeartbeatPayload {
 	host, err := Host()
 	if err != nil {
 		slog.Warn("failed to collect host info", "error", err)
@@ -30,6 +30,7 @@ func Collect(agentID, version string) models.HeartbeatPayload {
 
 	return models.HeartbeatPayload{
 		AgentID:       agentID,
+		DisplayName:   displayName,
 		Hostname:      host.Hostname,
 		OS:            host.OS,
 		IP:            host.IP,

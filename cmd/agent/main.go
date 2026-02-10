@@ -17,7 +17,8 @@ var Version = "dev"
 
 func main() {
 	serverURL := flag.String("server", "http://localhost:8080", "RMM server URL")
-	agentKey := flag.String("key", "", "Agent authentication key")
+	agentKey := flag.String("key", "", "Agent key (ID) – sunucuda bu agent'ı tanımak için kullanılır")
+	displayName := flag.String("name", "", "Görünen isim (kurulumda girilen, dashboard'da gösterilir)")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -32,7 +33,7 @@ func main() {
 	defer cancel()
 
 	// Start heartbeat
-	hb := heartbeat.New(*serverURL, *agentKey, Version)
+	hb := heartbeat.New(*serverURL, *agentKey, *displayName, Version)
 	go hb.Run(ctx)
 
 	// Start WebSocket executor

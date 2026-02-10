@@ -22,6 +22,8 @@ func New(dbPath string) (*Store, error) {
 	if _, err := d.Exec(schema); err != nil {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	// Migration: add display_name to existing agents tables
+	_, _ = d.Exec("ALTER TABLE agents ADD COLUMN display_name TEXT NOT NULL DEFAULT ''")
 	slog.Info("database initialized", "path", dbPath)
 	return &Store{db: d}, nil
 }
@@ -34,21 +36,22 @@ func (s *Store) Close() error {
 
 func (s *Store) UpsertAgent(a models.HeartbeatPayload) error {
 	_, err := s.db.Exec(`
-		INSERT INTO agents (id, hostname, os, ip, version, last_heartbeat, status)
-		VALUES (?, ?, ?, ?, ?, ?, 'online')
+		INSERT INTO agents (id, display_name, hostname, os, ip, version, last_heartbeat, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'online')
 		ON CONFLICT(id) DO UPDATE SET
+			display_name=excluded.display_name,
 			hostname=excluded.hostname,
 			os=excluded.os,
 			ip=excluded.ip,
 			version=excluded.version,
 			last_heartbeat=excluded.last_heartbeat,
 			status='online'
-	`, a.AgentID, a.Hostname, a.OS, a.IP, a.Version, time.Now().UTC())
+	`, a.AgentID, a.DisplayName, a.Hostname, a.OS, a.IP, a.Version, time.Now().UTC())
 	return err
 }
 
 func (s *Store) ListAgents() ([]models.Agent, error) {
-	rows, err := s.db.Query(`SELECT id, hostname, os, ip, version, last_heartbeat, status, created_at FROM agents ORDER BY hostname`)
+	rows, err := s.db.Query(`SELECT id, display_name, hostname, os, ip, version, last_heartbeat, status, created_at FROM agents ORDER BY display_name, id`)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +60,7 @@ func (s *Store) ListAgents() ([]models.Agent, error) {
 	var agents []models.Agent
 	for rows.Next() {
 		var a models.Agent
-		if err := rows.Scan(&a.ID, &a.Hostname, &a.OS, &a.IP, &a.Version, &a.LastHeartbeat, &a.Status, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.DisplayName, &a.Hostname, &a.OS, &a.IP, &a.Version, &a.LastHeartbeat, &a.Status, &a.CreatedAt); err != nil {
 			return nil, err
 		}
 		agents = append(agents, a)
@@ -67,8 +70,8 @@ func (s *Store) ListAgents() ([]models.Agent, error) {
 
 func (s *Store) GetAgent(id string) (*models.Agent, error) {
 	var a models.Agent
-	err := s.db.QueryRow(`SELECT id, hostname, os, ip, version, last_heartbeat, status, created_at FROM agents WHERE id=?`, id).
-		Scan(&a.ID, &a.Hostname, &a.OS, &a.IP, &a.Version, &a.LastHeartbeat, &a.Status, &a.CreatedAt)
+	err := s.db.QueryRow(`SELECT id, display_name, hostname, os, ip, version, last_heartbeat, status, created_at FROM agents WHERE id=?`, id).
+		Scan(&a.ID, &a.DisplayName, &a.Hostname, &a.OS, &a.IP, &a.Version, &a.LastHeartbeat, &a.Status, &a.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

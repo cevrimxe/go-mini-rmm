@@ -14,18 +14,20 @@ import (
 const interval = 30 * time.Second
 
 type Heartbeat struct {
-	serverURL string
-	agentKey  string
-	version   string
-	client    *http.Client
+	serverURL   string
+	agentKey    string
+	displayName string
+	version     string
+	client      *http.Client
 }
 
-func New(serverURL, agentKey, version string) *Heartbeat {
+func New(serverURL, agentKey, displayName, version string) *Heartbeat {
 	return &Heartbeat{
-		serverURL: serverURL,
-		agentKey:  agentKey,
-		version:   version,
-		client:    &http.Client{Timeout: 10 * time.Second},
+		serverURL:   serverURL,
+		agentKey:    agentKey,
+		displayName: displayName,
+		version:     version,
+		client:      &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -47,7 +49,7 @@ func (h *Heartbeat) Run(ctx context.Context) {
 }
 
 func (h *Heartbeat) send() {
-	payload := collector.Collect(h.agentKey, h.version)
+	payload := collector.Collect(h.agentKey, h.displayName, h.version)
 
 	body, err := json.Marshal(payload)
 	if err != nil {

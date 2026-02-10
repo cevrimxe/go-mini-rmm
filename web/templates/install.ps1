@@ -47,19 +47,19 @@ if (-not $isAdmin) {
     Err "Yonetici olarak calistirin!"
 }
 
-# Interactive prompts
+# Sadece isim sorulur, key otomatik uretilir
 $DefaultName = $env:COMPUTERNAME
 $AgentName = Read-Host "  Agent ismi [$DefaultName]"
 if ([string]::IsNullOrWhiteSpace($AgentName)) { $AgentName = $DefaultName }
 
-$DefaultKey = ($AgentName.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
-$AgentKey = Read-Host "  Agent key [$DefaultKey]"
-if ([string]::IsNullOrWhiteSpace($AgentKey)) { $AgentKey = $DefaultKey }
+$Slug = ($AgentName.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
+if ([string]::IsNullOrWhiteSpace($Slug)) { $Slug = "agent" }
+$Rand = [System.Guid]::NewGuid().ToString("n").Substring(0, 6)
+$AgentKey = "$Slug-$Rand"
 
 Write-Host ""
 Log "Server:     $ServerURL"
-Log "Agent Key:  $AgentKey"
-Log "Agent Name: $AgentName"
+Log "Agent:      $AgentName (key: $AgentKey)"
 Write-Host ""
 
 # Stop existing
@@ -89,7 +89,7 @@ Log "Config kaydedildi: $InstallDir\config.json"
 
 # Create scheduled task (runs at startup, as SYSTEM)
 Log "Gorev zamanlayici olusturuluyor..."
-$action = New-ScheduledTaskAction -Execute "$InstallDir\agent.exe" -Argument "-server $ServerURL -key $AgentKey" -WorkingDirectory $InstallDir
+$action = New-ScheduledTaskAction -Execute "$InstallDir\agent.exe" -Argument "-server $ServerURL -key $AgentKey -name `"$AgentName`"" -WorkingDirectory $InstallDir
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit (New-TimeSpan -Days 365)
 $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
@@ -117,7 +117,7 @@ Write-Host "=================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Durum:     $statusText" -ForegroundColor $statusColor
 Write-Host "  Dashboard: $ServerURL" -ForegroundColor Cyan
-Write-Host "  Agent Key: $AgentKey" -ForegroundColor White
+Write-Host "  Agent:     $AgentName (key: $AgentKey)" -ForegroundColor White
 Write-Host ""
 Write-Host "  Komutlar:" -ForegroundColor White
 Write-Host "    Get-ScheduledTask RMM-Agent    # durum"

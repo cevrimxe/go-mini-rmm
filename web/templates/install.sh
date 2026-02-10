@@ -32,12 +32,11 @@ if [ "$(id -u)" -ne 0 ]; then
     err "Root olarak calistirin:\n    curl -sSL ${SERVER_URL}/install.sh | sudo bash"
 fi
 
-# If args passed, use non-interactive mode
+# If args passed, use non-interactive mode: $1 = agent name (key auto-generated)
 if [ -n "$1" ]; then
-    AGENT_KEY="$1"
-    AGENT_NAME="${2:-$(hostname)}"
+    AGENT_NAME="$1"
 else
-    # Interactive mode: read from terminal (curl|bash makes stdin the script, not the tty)
+    # Interactive: sadece isim sorulur, key otomatik uretilir
     if [ ! -t 0 ]; then
         warn "Pipe ile calistirildi, script indirilip tekrar calistiriliyor (terminal girisleri icin)..."
         TMPSCRIPT=$(mktemp)
@@ -48,17 +47,16 @@ else
     ask "Agent ismi [${DEFAULT_NAME}]: "
     read -r AGENT_NAME </dev/tty
     AGENT_NAME="${AGENT_NAME:-$DEFAULT_NAME}"
-
-    DEFAULT_KEY=$(echo "$AGENT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' .' '-' | tr -cd 'a-z0-9-')
-    ask "Agent key [${DEFAULT_KEY}]: "
-    read -r AGENT_KEY </dev/tty
-    AGENT_KEY="${AGENT_KEY:-$DEFAULT_KEY}"
 fi
+
+# Key = isimden slug + rastgele (benzersiz olsun)
+SLUG=$(echo "$AGENT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' .' '-' | tr -cd 'a-z0-9-' | head -c 20)
+RAND=$(openssl rand -hex 3 2>/dev/null || echo "$(date +%s)$$" | cksum | cut -c1-6)
+AGENT_KEY="${SLUG:-agent}-${RAND}"
 
 echo ""
 log "Server:     ${SERVER_URL}"
-log "Agent Key:  ${AGENT_KEY}"
-log "Agent Name: ${AGENT_NAME}"
+log "Agent:      ${AGENT_NAME} (key: ${AGENT_KEY})"
 echo ""
 
 # Detect arch
@@ -97,7 +95,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=${INSTALL_DIR}/agent -server ${SERVER_URL} -key ${AGENT_KEY}
+ExecStart=${INSTALL_DIR}/agent -server ${SERVER_URL} -key ${AGENT_KEY} -name "${AGENT_NAME}"
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -127,7 +125,7 @@ echo -e "${BOLD}╚════════════════════�
 echo ""
 echo -e "  Durum:     ${STATUS}"
 echo -e "  Dashboard: ${CYAN}${SERVER_URL}${NC}"
-echo -e "  Agent Key: ${BOLD}${AGENT_KEY}${NC}"
+echo -e "  Agent:     ${BOLD}${AGENT_NAME}${NC} (key: ${AGENT_KEY})"
 echo ""
 echo -e "  ${BOLD}Faydali komutlar:${NC}"
 echo -e "    systemctl status ${SERVICE_NAME}     # durum"
