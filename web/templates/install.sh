@@ -37,15 +37,21 @@ if [ -n "$1" ]; then
     AGENT_KEY="$1"
     AGENT_NAME="${2:-$(hostname)}"
 else
-    # Interactive mode
+    # Interactive mode: read from terminal (curl|bash makes stdin the script, not the tty)
+    if [ ! -t 0 ]; then
+        warn "Pipe ile calistirildi, script indirilip tekrar calistiriliyor (terminal girisleri icin)..."
+        TMPSCRIPT=$(mktemp)
+        curl -sSL "${SERVER_URL}/install.sh" -o "$TMPSCRIPT"
+        exec bash "$TMPSCRIPT" < /dev/tty
+    fi
     DEFAULT_NAME=$(hostname)
     ask "Agent ismi [${DEFAULT_NAME}]: "
-    read -r AGENT_NAME
+    read -r AGENT_NAME </dev/tty
     AGENT_NAME="${AGENT_NAME:-$DEFAULT_NAME}"
 
     DEFAULT_KEY=$(echo "$AGENT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' .' '-' | tr -cd 'a-z0-9-')
     ask "Agent key [${DEFAULT_KEY}]: "
-    read -r AGENT_KEY
+    read -r AGENT_KEY </dev/tty
     AGENT_KEY="${AGENT_KEY:-$DEFAULT_KEY}"
 fi
 
