@@ -7,7 +7,15 @@ type AlertRule struct {
 	Metric    string    `json:"metric"`    // cpu_percent, memory_percent, disk_percent
 	Operator  string    `json:"operator"`  // >, <, >=, <=, ==
 	Threshold float64   `json:"threshold"` // e.g. 90.0
+	AgentID   string    `json:"agent_id"`  // empty = all agents
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type AlertRuleRequest struct {
+	Metric    string  `json:"metric"`
+	Operator  string  `json:"operator"`
+	Threshold float64 `json:"threshold"`
+	AgentID   string  `json:"agent_id"` // optional
 }
 
 type Alert struct {
@@ -19,8 +27,3 @@ type Alert struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type AlertRuleRequest struct {
-	Metric    string  `json:"metric"`
-	Operator  string  `json:"operator"`
-	Threshold float64 `json:"threshold"`
-}

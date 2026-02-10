@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS alert_rules (
 	metric TEXT NOT NULL,
 	operator TEXT NOT NULL,
 	threshold REAL NOT NULL,
+	agent_id TEXT NOT NULL DEFAULT '',
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

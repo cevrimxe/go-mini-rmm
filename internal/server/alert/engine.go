@@ -77,6 +77,9 @@ func (e *Engine) checkMetricRules() {
 		}
 
 		for _, rule := range rules {
+			if rule.AgentID != "" && rule.AgentID != agent.ID {
+				continue
+			}
 			value := getMetricValue(metric, rule.Metric)
 			if evaluate(value, rule.Operator, rule.Threshold) {
 				msg := fmt.Sprintf("%s: %s %s %.1f (current: %.1f)",

@@ -15,6 +15,9 @@
     <p style="margin:0.3rem 0 0 0;color:var(--dim);font-size:0.82rem">
         Key: <code>{{.Agent.ID}}</code> &middot; {{.Agent.Hostname}} &middot; {{.Agent.OS}} &middot; {{.Agent.IP}} &middot; v{{.Agent.Version}} &middot; Last seen {{timeAgo .Agent.LastHeartbeat}}
     </p>
+    <p style="margin:0.5rem 0 0 0">
+        <button type="button" class="outline secondary btn-sm" style="color:var(--red);border-color:var(--red)" onclick="removeAgent('{{.Agent.ID}}')">Remove agent</button>
+    </p>
 </div>
 
 <div class="grid-stats">
@@ -146,6 +149,13 @@ function showOutput(stdout, stderr, cmd) {
     cmdOutput.style.display = 'block';
     cmdOutput.textContent = '$ ' + cmd + '\n' + (stdout || '(no output)');
     if (stderr) cmdOutput.textContent += '\n--- stderr ---\n' + stderr;
+}
+function removeAgent(key) {
+    var msg = 'Remove this agent permanently?\n\nConfirm: delete (' + key + ')';
+    if (prompt(msg) !== 'delete (' + key + ')') return;
+    fetch('/api/v1/agents/' + encodeURIComponent(key), { method: 'DELETE' })
+        .then(function() { window.location.href = '/'; })
+        .catch(function(err) { alert('Error: ' + err.message); });
 }
 setTimeout(function(){ location.reload(); }, 30000);
 </script>

@@ -135,10 +135,16 @@ func (h *WebHandler) Alerts(w http.ResponseWriter, r *http.Request) {
 		rules = []models.AlertRule{}
 	}
 
+	agents, _ := h.store.ListAgents()
+	if agents == nil {
+		agents = []models.Agent{}
+	}
+
 	h.render(w, "alerts", map[string]interface{}{
 		"Title":  "Alerts",
 		"Alerts": alerts,
 		"Rules":  rules,
+		"Agents": agents,
 	})
 }
 

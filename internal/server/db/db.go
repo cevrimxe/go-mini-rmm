@@ -24,6 +24,8 @@ func New(dbPath string) (*Store, error) {
 	}
 	// Migration: add display_name to existing agents tables
 	_, _ = d.Exec("ALTER TABLE agents ADD COLUMN display_name TEXT NOT NULL DEFAULT ''")
+	// Migration: add agent_id to existing alert_rules
+	_, _ = d.Exec("ALTER TABLE alert_rules ADD COLUMN agent_id TEXT NOT NULL DEFAULT ''")
 	slog.Info("database initialized", "path", dbPath)
 	return &Store{db: d}, nil
 }
@@ -182,8 +184,8 @@ func (s *Store) GetCommandsByAgent(agentID string, limit int) ([]models.Command,
 // ---- Alert Rules ----
 
 func (s *Store) CreateAlertRule(r models.AlertRuleRequest) (*models.AlertRule, error) {
-	res, err := s.db.Exec(`INSERT INTO alert_rules (metric, operator, threshold) VALUES (?, ?, ?)`,
-		r.Metric, r.Operator, r.Threshold)
+	res, err := s.db.Exec(`INSERT INTO alert_rules (metric, operator, threshold, agent_id) VALUES (?, ?, ?, ?)`,
+		r.Metric, r.Operator, r.Threshold, r.AgentID)
 	if err != nil {
 		return nil, err
 	}
@@ -193,12 +195,13 @@ func (s *Store) CreateAlertRule(r models.AlertRuleRequest) (*models.AlertRule, e
 		Metric:    r.Metric,
 		Operator:  r.Operator,
 		Threshold: r.Threshold,
+		AgentID:   r.AgentID,
 		CreatedAt: time.Now().UTC(),
 	}, nil
 }
 
 func (s *Store) ListAlertRules() ([]models.AlertRule, error) {
-	rows, err := s.db.Query(`SELECT id, metric, operator, threshold, created_at FROM alert_rules ORDER BY id`)
+	rows, err := s.db.Query(`SELECT id, metric, operator, threshold, agent_id, created_at FROM alert_rules ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +210,7 @@ func (s *Store) ListAlertRules() ([]models.AlertRule, error) {
 	var rules []models.AlertRule
 	for rows.Next() {
 		var r models.AlertRule
-		if err := rows.Scan(&r.ID, &r.Metric, &r.Operator, &r.Threshold, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.Metric, &r.Operator, &r.Threshold, &r.AgentID, &r.CreatedAt); err != nil {
 			return nil, err
 		}
 		rules = append(rules, r)

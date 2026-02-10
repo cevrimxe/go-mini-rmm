@@ -45,6 +45,8 @@ func (h *AlertHandler) ListRules(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(rules)
 }
 
+var metricAliases = map[string]string{"cpu": "cpu_percent", "memory": "memory_percent", "disk": "disk_percent"}
+
 func (h *AlertHandler) CreateRule(w http.ResponseWriter, r *http.Request) {
 	var req models.AlertRuleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -52,10 +54,13 @@ func (h *AlertHandler) CreateRule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate
+	// Normalize metric (form sends cpu/memory/disk)
+	if m, ok := metricAliases[req.Metric]; ok {
+		req.Metric = m
+	}
 	validMetrics := map[string]bool{"cpu_percent": true, "memory_percent": true, "disk_percent": true}
 	if !validMetrics[req.Metric] {
-		http.Error(w, "invalid metric (cpu_percent, memory_percent, disk_percent)", http.StatusBadRequest)
+		http.Error(w, "invalid metric (cpu, memory, disk)", http.StatusBadRequest)
 		return
 	}
 	validOps := map[string]bool{">": true, "<": true, ">=": true, "<=": true, "==": true}

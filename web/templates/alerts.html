@@ -5,7 +5,7 @@
 </div>
 
 <div style="background:var(--surface);padding:1.2rem;border-radius:10px;border:1px solid rgba(255,255,255,0.05);margin-bottom:1.5rem">
-    <form method="POST" action="/api/v1/alerts/rules" style="display:grid;grid-template-columns:1fr 1fr 80px 1fr auto;gap:0.6rem;align-items:end">
+    <form id="ruleForm" style="display:grid;grid-template-columns:1fr 1fr 80px 1fr auto;gap:0.6rem;align-items:end">
         <div>
             <label style="font-size:0.7rem;font-weight:600;color:var(--dim);margin-bottom:0.25rem;display:block">Metric</label>
             <select name="metric" style="margin:0">
@@ -26,11 +26,17 @@
             <input type="number" name="threshold" placeholder="90" min="0" max="100" style="margin:0">
         </div>
         <div>
-            <label style="font-size:0.7rem;font-weight:600;color:var(--dim);margin-bottom:0.25rem;display:block">Agent (optional)</label>
-            <input type="text" name="agent_id" placeholder="All agents" style="margin:0">
+            <label style="font-size:0.7rem;font-weight:600;color:var(--dim);margin-bottom:0.25rem;display:block">Agent</label>
+            <select name="agent_id" style="margin:0">
+                <option value="">All agents</option>
+                {{range .Agents}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+            </select>
         </div>
         <button type="submit" class="btn-accent" style="margin:0">Add</button>
     </form>
+    <p id="ruleError" class="text-muted text-sm" style="margin:0.5rem 0 0 0;color:var(--red);display:none"></p>
 </div>
 
 <div class="table-wrap" style="margin-bottom:1.5rem">
@@ -48,8 +54,8 @@
         {{range .Rules}}
         <tr>
             <td>
-                {{if eq .Metric "cpu"}}<span class="badge badge-info">CPU</span>
-                {{else if eq .Metric "memory"}}<span class="badge badge-warning">Memory</span>
+                {{if eq .Metric "cpu_percent"}}<span class="badge badge-info">CPU</span>
+                {{else if eq .Metric "memory_percent"}}<span class="badge badge-warning">Memory</span>
                 {{else}}<span class="badge badge-offline">Disk</span>{{end}}
             </td>
             <td><code>{{.Operator}}</code></td>
@@ -101,5 +107,26 @@
 </table>
 </div>
 
-<script>setTimeout(function(){ location.reload(); }, 30000);</script>
+<script>
+document.getElementById('ruleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var payload = {
+        metric: form.metric.value,
+        operator: form.operator.value,
+        threshold: parseFloat(form.threshold.value) || 90,
+        agent_id: form.agent_id.value || ''
+    };
+    var errEl = document.getElementById('ruleError');
+    fetch('/api/v1/alerts/rules', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    }).then(function(r) {
+        if (r.ok) return location.reload();
+        return r.text().then(function(t) { errEl.textContent = t || 'Error'; errEl.style.display = 'block'; });
+    }).catch(function(err) { errEl.textContent = err.message; errEl.style.display = 'block'; });
+});
+setTimeout(function(){ location.reload(); }, 30000);
+</script>
 {{end}}
