@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Mini RMM</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+        :root {
+            --pico-font-size: 15px;
+        }
+        nav {
+            padding: 0.5rem 1rem;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-online { background: #22c55e; color: #fff; }
+        .badge-offline { background: #ef4444; color: #fff; }
+        .metric-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: var(--pico-muted-border-color);
+            overflow: hidden;
+        }
+        .metric-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .fill-green { background: #22c55e; }
+        .fill-yellow { background: #eab308; }
+        .fill-red { background: #ef4444; }
+        .terminal-output {
+            background: #1a1a2e;
+            color: #0f0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .stat-card {
+            padding: 1rem;
+            border-radius: 8px;
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .stat-card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        table { font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><a href="/"><strong>Mini RMM</strong></a></li>
+        </ul>
+        <ul>
+            <li><a href="/">Dashboard</a></li>
+            <li><a href="/ui/alerts">Alerts</a></li>
+        </ul>
+    </nav>
+    <main class="container">
+        {{template "content" .}}
+    </main>
+    <footer class="container">
+        <small>Go Mini RMM &copy; 2026</small>
+    </footer>
+</body>
+</html>

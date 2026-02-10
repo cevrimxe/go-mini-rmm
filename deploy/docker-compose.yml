@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    container_name: rmm-server
+    ports:
+      - "8080:8080"
+    volumes:
+      - rmm-data:/app/data
+    restart: unless-stopped
+
+  agent-1:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.agent
+    container_name: rmm-agent-1
+    command: ["-server", "http://server:8080", "-key", "agent-1"]
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  agent-2:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.agent
+    container_name: rmm-agent-2
+    command: ["-server", "http://server:8080", "-key", "agent-2"]
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  rmm-data:

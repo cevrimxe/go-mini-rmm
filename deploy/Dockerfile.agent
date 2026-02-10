@@ -1,0 +1,17 @@
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=1.0.0" -o /agent ./cmd/agent
+
+FROM alpine:3.19
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /app
+
+COPY --from=builder /agent .
+
+ENTRYPOINT ["./agent"]
+CMD ["-server", "http://server:8080", "-key", "agent-1"]

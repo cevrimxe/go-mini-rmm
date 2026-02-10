@@ -1,0 +1,145 @@
+{{define "content"}}
+<nav aria-label="breadcrumb">
+    <ul>
+        <li><a href="/">Dashboard</a></li>
+        <li>{{.Agent.Hostname}}</li>
+    </ul>
+</nav>
+
+<hgroup>
+    <h2>{{.Agent.Hostname}}
+        {{if eq (printf "%s" .Agent.Status) "online"}}
+        <span class="badge badge-online">ONLINE</span>
+        {{else}}
+        <span class="badge badge-offline">OFFLINE</span>
+        {{end}}
+    </h2>
+    <p>{{.Agent.OS}} | {{.Agent.IP}} | v{{.Agent.Version}}</p>
+</hgroup>
+
+<div class="grid-stats">
+    <div class="stat-card">
+        <h3>CPU</h3>
+        {{if .Metric}}
+        <div class="value">{{printf "%.1f" .Metric.CPUPercent}}%</div>
+        <div class="metric-bar">
+            <div class="metric-bar-fill {{metricColor .Metric.CPUPercent}}" style="width:{{printf "%.0f" .Metric.CPUPercent}}%"></div>
+        </div>
+        {{else}}<div class="value">-</div>{{end}}
+    </div>
+    <div class="stat-card">
+        <h3>Memory</h3>
+        {{if .Metric}}
+        <div class="value">{{printf "%.1f" .Metric.MemoryPercent}}%</div>
+        <div class="metric-bar">
+            <div class="metric-bar-fill {{metricColor .Metric.MemoryPercent}}" style="width:{{printf "%.0f" .Metric.MemoryPercent}}%"></div>
+        </div>
+        {{else}}<div class="value">-</div>{{end}}
+    </div>
+    <div class="stat-card">
+        <h3>Disk</h3>
+        {{if .Metric}}
+        <div class="value">{{printf "%.1f" .Metric.DiskPercent}}%</div>
+        <div class="metric-bar">
+            <div class="metric-bar-fill {{metricColor .Metric.DiskPercent}}" style="width:{{printf "%.0f" .Metric.DiskPercent}}%"></div>
+        </div>
+        {{else}}<div class="value">-</div>{{end}}
+    </div>
+    <div class="stat-card">
+        <h3>Last Heartbeat</h3>
+        <div class="value" style="font-size:1rem">{{timeAgo .Agent.LastHeartbeat}}</div>
+    </div>
+</div>
+
+<h3 style="margin-top:2rem">Remote Command</h3>
+<form id="cmdForm" onsubmit="sendCommand(event)">
+    <div class="grid">
+        <input type="text" id="cmdInput" placeholder="Enter command (e.g. whoami, df -h)" required>
+        <button type="submit">Run</button>
+    </div>
+</form>
+<div id="cmdOutput" class="terminal-output" style="display:none"></div>
+
+<h3 style="margin-top:2rem">Command History</h3>
+<div style="overflow-x:auto">
+<table>
+    <thead>
+        <tr>
+            <th>Command</th>
+            <th>Status</th>
+            <th>Exit Code</th>
+            <th>Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Commands}}
+        <tr onclick="showOutput(this, '{{.Stdout}}', '{{.Stderr}}')" style="cursor:pointer">
+            <td><code>{{.Command}}</code></td>
+            <td>
+                {{if eq (printf "%s" .Status) "done"}}
+                <span class="badge badge-online">done</span>
+                {{else if eq (printf "%s" .Status) "pending"}}
+                <span class="badge" style="background:#eab308;color:#000">pending</span>
+                {{else}}
+                <span class="badge badge-offline">{{.Status}}</span>
+                {{end}}
+            </td>
+            <td>{{.ExitCode}}</td>
+            <td><small>{{timeAgo .CreatedAt}}</small></td>
+        </tr>
+        {{else}}
+        <tr><td colspan="4">No commands yet.</td></tr>
+        {{end}}
+    </tbody>
+</table>
+</div>
+
+<script>
+const agentID = "{{.Agent.ID}}";
+
+async function sendCommand(e) {
+    e.preventDefault();
+    const cmd = document.getElementById('cmdInput').value;
+    const output = document.getElementById('cmdOutput');
+    output.style.display = 'block';
+    output.textContent = '$ ' + cmd + '\nRunning...\n';
+
+    try {
+        const resp = await fetch('/api/v1/agents/' + agentID + '/command', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({command: cmd})
+        });
+        const data = await resp.json();
+
+        // Poll for result
+        let attempts = 0;
+        const poll = setInterval(async () => {
+            attempts++;
+            const cmdResp = await fetch('/api/v1/agents/' + agentID + '/commands?limit=1');
+            const cmds = await cmdResp.json();
+            if (cmds.length > 0 && cmds[0].id === data.id && cmds[0].status !== 'pending') {
+                clearInterval(poll);
+                output.textContent = '$ ' + cmd + '\n' + cmds[0].stdout;
+                if (cmds[0].stderr) {
+                    output.textContent += '\nSTDERR: ' + cmds[0].stderr;
+                }
+                output.textContent += '\n[exit: ' + cmds[0].exit_code + ']';
+            }
+            if (attempts > 30) clearInterval(poll);
+        }, 1000);
+    } catch(err) {
+        output.textContent += 'Error: ' + err.message;
+    }
+}
+
+function showOutput(row, stdout, stderr) {
+    const output = document.getElementById('cmdOutput');
+    output.style.display = 'block';
+    output.textContent = stdout || '(no output)';
+    if (stderr) output.textContent += '\nSTDERR: ' + stderr;
+}
+
+setTimeout(function(){ location.reload(); }, 30000);
+</script>
+{{end}}

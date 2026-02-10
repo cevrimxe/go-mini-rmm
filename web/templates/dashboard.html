@@ -1,0 +1,90 @@
+{{define "content"}}
+<h2>Dashboard</h2>
+
+<div class="grid-stats">
+    <div class="stat-card">
+        <h3>Total Agents</h3>
+        <div class="value">{{.TotalAgents}}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Online</h3>
+        <div class="value" style="color:#22c55e">{{.OnlineAgents}}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Offline</h3>
+        <div class="value" style="color:#ef4444">{{.OfflineAgents}}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Active Alerts</h3>
+        <div class="value" style="color:#eab308">{{.ActiveAlerts}}</div>
+    </div>
+</div>
+
+<h3 style="margin-top:2rem">Agents</h3>
+<div style="overflow-x:auto">
+<table>
+    <thead>
+        <tr>
+            <th>Hostname</th>
+            <th>OS</th>
+            <th>IP</th>
+            <th>Version</th>
+            <th>Status</th>
+            <th>CPU</th>
+            <th>Memory</th>
+            <th>Disk</th>
+            <th>Last Heartbeat</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Agents}}
+        <tr>
+            <td><a href="/ui/agents/{{.Agent.ID}}">{{.Agent.Hostname}}</a></td>
+            <td>{{.Agent.OS}}</td>
+            <td>{{.Agent.IP}}</td>
+            <td>{{.Agent.Version}}</td>
+            <td>
+                {{if eq (printf "%s" .Agent.Status) "online"}}
+                <span class="badge badge-online">ONLINE</span>
+                {{else}}
+                <span class="badge badge-offline">OFFLINE</span>
+                {{end}}
+            </td>
+            <td>
+                {{if .Metric}}
+                <div class="metric-bar">
+                    <div class="metric-bar-fill {{metricColor .Metric.CPUPercent}}" style="width:{{printf "%.0f" .Metric.CPUPercent}}%"></div>
+                </div>
+                <small>{{printf "%.1f" .Metric.CPUPercent}}%</small>
+                {{else}}-{{end}}
+            </td>
+            <td>
+                {{if .Metric}}
+                <div class="metric-bar">
+                    <div class="metric-bar-fill {{metricColor .Metric.MemoryPercent}}" style="width:{{printf "%.0f" .Metric.MemoryPercent}}%"></div>
+                </div>
+                <small>{{printf "%.1f" .Metric.MemoryPercent}}%</small>
+                {{else}}-{{end}}
+            </td>
+            <td>
+                {{if .Metric}}
+                <div class="metric-bar">
+                    <div class="metric-bar-fill {{metricColor .Metric.DiskPercent}}" style="width:{{printf "%.0f" .Metric.DiskPercent}}%"></div>
+                </div>
+                <small>{{printf "%.1f" .Metric.DiskPercent}}%</small>
+                {{else}}-{{end}}
+            </td>
+            <td><small>{{timeAgo .Agent.LastHeartbeat}}</small></td>
+        </tr>
+        {{else}}
+        <tr><td colspan="9">No agents registered yet.</td></tr>
+        {{end}}
+    </tbody>
+</table>
+</div>
+
+<script>
+// Auto-refresh every 30 seconds
+setTimeout(function(){ location.reload(); }, 30000);
+</script>
+{{end}}
