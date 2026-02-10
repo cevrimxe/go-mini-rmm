@@ -151,8 +151,9 @@ function showOutput(stdout, stderr, cmd) {
     if (stderr) cmdOutput.textContent += '\n--- stderr ---\n' + stderr;
 }
 function removeAgent(key) {
-    var msg = 'Remove this agent permanently?\n\nConfirm: delete (' + key + ')';
-    if (prompt(msg) !== 'delete (' + key + ')') return;
+    var expected = 'delete ' + key;
+    var msg = 'Remove this agent permanently? Type exactly:\n\n' + expected;
+    if (prompt(msg) !== expected) return;
     fetch('/api/v1/agents/' + encodeURIComponent(key), { method: 'DELETE' })
         .then(function() { window.location.href = '/'; })
         .catch(function(err) { alert('Error: ' + err.message); });
