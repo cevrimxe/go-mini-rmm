@@ -13,18 +13,6 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
-  agent:
-    image: ghcr.io/cevrimxe/go-mini-rmm-agent:latest
-    container_name: rmm-agent-local
-    command: ["-server", "http://server:9090", "-key", "sunucu-agent"]
-    depends_on:
-      - server
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower
