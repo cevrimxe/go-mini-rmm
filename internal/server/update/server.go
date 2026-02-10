@@ -65,16 +65,14 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, binPath)
 }
 
-func (h *Handler) InstallScript(w http.ResponseWriter, r *http.Request) {
-	// Build server URL from request
+func (h *Handler) serveInstallScript(w http.ResponseWriter, r *http.Request, filename string) {
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
 	}
-	host := r.Host
-	serverURL := scheme + "://" + host
+	serverURL := scheme + "://" + r.Host
 
-	tmplBytes, err := web.TemplateFS.ReadFile("templates/install.sh")
+	tmplBytes, err := web.TemplateFS.ReadFile("templates/" + filename)
 	if err != nil {
 		http.Error(w, "install script not found", http.StatusInternalServerError)
 		return
@@ -91,4 +89,12 @@ func (h *Handler) InstallScript(w http.ResponseWriter, r *http.Request) {
 	var buf strings.Builder
 	tmpl.Execute(&buf, map[string]string{"ServerURL": serverURL})
 	w.Write([]byte(buf.String()))
+}
+
+func (h *Handler) InstallScript(w http.ResponseWriter, r *http.Request) {
+	h.serveInstallScript(w, r, "install.sh")
+}
+
+func (h *Handler) InstallScriptPS(w http.ResponseWriter, r *http.Request) {
+	h.serveInstallScript(w, r, "install.ps1")
 }

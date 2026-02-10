@@ -50,8 +50,9 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 		hub.HandleAgentWS(w, r)
 	})
 
-	// Install script (curl one-liner)
+	// Install scripts (one-liner)
 	r.Get("/install.sh", updateHandler.InstallScript)
+	r.Get("/install.ps1", updateHandler.InstallScriptPS)
 
 	// Web UI routes (under /ui to avoid conflicts with API)
 	r.Get("/", webHandler.Dashboard)
