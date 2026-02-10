@@ -1,14 +1,18 @@
 # Go Mini RMM
 
-Lightweight Remote Monitoring and Management tool built with Go.
+Go ile yazılmış, hafif bir **Remote Monitoring & Management (RMM)** aracı.
 
-## Features
-- **Agent heartbeat** & system metrics collection (CPU, RAM, Disk)
-- **Remote command execution** via WebSocket
-- **Alert engine** with custom threshold rules + offline detection
-- **Embedded web dashboard** (htmx + PicoCSS, dark theme)
-- **Agent auto-update** mechanism
-- **Docker Compose** deployment ready
+## Özellikler
+- **Agent heartbeat** + sistem metrikleri (CPU / RAM / Disk)
+- **Remote command** (WebSocket üzerinden)
+- **Alert engine** (threshold kuralları + offline agent tespiti)
+- **Embedded web dashboard** (htmx + PicoCSS)
+- **Agent auto-update** (binary güncelleme)
+- **Docker Compose** ile deploy (prod için Watchtower ile otomatik güncelleme)
+
+## Güvenlik
+- Dashboard **login zorunlu**: ilk açılışta `/setup` ile kullanıcı oluşturulur, sonra `/login`.
+- Agent haberleşmesi (heartbeat, update, ws) **login istemez** (agent key ile çalışır).
 
 ## Architecture
 
@@ -23,10 +27,10 @@ Agent (lightweight binary)          Server (API + Dashboard)
                                    └──────────────────────────┘
 ```
 
-## Quick Start
+## Hızlı Başlangıç (Local Dev)
 
 ### Prerequisites
-- Go 1.21+
+- Go 1.25+
 - Docker & Docker Compose (optional)
 
 ### Build from source
@@ -47,7 +51,9 @@ go build -o bin/agent ./cmd/agent
 ./bin/agent -server http://localhost:8080 -key my-agent-1
 ```
 
-Then open http://localhost:8080 for the dashboard.
+Sonra dashboard: `http://localhost:8080`
+
+İlk açılışta kullanıcı oluşturma ekranı gelir: `/setup`.
 
 ### Docker Compose
 ```bash
@@ -57,37 +63,77 @@ docker-compose up -d
 
 This starts the server on port 8080 with 2 demo agents.
 
-### Cross-compile agents
+## Production Kurulum (Remote Linux Sunucu)
+
+Bu repo public olduğu için Docker image’lar **GHCR**’a pushlanır; sunucuda **Watchtower** yeni image gelince otomatik çeker/restart eder.
+
+### 1) Sunucuda server’ı kur (tek komut)
+
+Sunucuda (root):
+
 ```bash
-chmod +x scripts/build.sh
-./scripts/build.sh 1.0.0
+curl -sSL https://raw.githubusercontent.com/cevrimxe/go-mini-rmm/main/deploy/setup-docker.sh | bash
 ```
 
-Builds agent binaries for linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64.
+- Default port: **9090**
+- Dashboard: `http://SUNUCU_IP:9090`
+- İlk açılışta `/setup` ile kullanıcı oluştur, sonra `/login` ile giriş yap.
+
+> Not: Prod compose artık **agent kurmaz**. Agent’ları sen istediğin makinelere elle kurarsın.
+
+### 2) Agent kurulumları (elle)
+
+#### Linux agent (interactive, tek komut)
+
+```bash
+curl -sSL http://SUNUCU_IP:9090/install.sh | sudo bash
+```
+
+#### Linux agent (non-interactive)
+
+```bash
+curl -sSL http://SUNUCU_IP:9090/install.sh | sudo bash -- "AGENT_KEY" "AGENT_NAME"
+```
+
+- **Dashboard’da “Name” olarak görünen değer `AGENT_KEY`’dir** (agent_id).
+- `AGENT_NAME` şu an sadece systemd servis açıklamasında kullanılır.
+
+#### Windows agent (PowerShell, admin)
+
+```powershell
+irm http://SUNUCU_IP:9090/install.ps1 | iex
+```
+
+### Agent update nasıl çalışıyor?
+- Agent, periyodik olarak server’ın `/api/v1/update/check` ve `/api/v1/update/download` endpoint’lerini kullanarak kendini günceller.
+- Server Docker image’ı, agent binary’lerini de içerir (download endpoint’i buradan servis eder).
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v1/heartbeat` | Agent heartbeat |
-| GET | `/api/v1/agents` | List all agents |
-| GET | `/api/v1/agents/{id}` | Agent details |
-| DELETE | `/api/v1/agents/{id}` | Remove agent |
-| GET | `/api/v1/agents/{id}/metrics` | Agent metrics history |
-| POST | `/api/v1/agents/{id}/command` | Send remote command |
-| GET | `/api/v1/agents/{id}/commands` | Command history |
-| GET | `/api/v1/alerts` | List alerts |
-| GET | `/api/v1/alerts/rules` | List alert rules |
-| POST | `/api/v1/alerts/rules` | Create alert rule |
-| DELETE | `/api/v1/alerts/rules/{id}` | Delete alert rule |
-| GET | `/api/v1/update/check` | Check for agent updates |
-| GET | `/api/v1/update/download` | Download agent binary |
-| WS | `/ws/agent?agent_id=X` | Agent WebSocket connection |
+| POST | `/api/v1/heartbeat` | Agent heartbeat (**public**) |
+| GET | `/api/v1/update/check` | Agent update check (**public**) |
+| GET | `/api/v1/update/download` | Agent binary download (**public**) |
+| WS | `/ws/agent?agent_id=X` | Agent WebSocket (**public**) |
+| GET | `/api/v1/agents` | List agents (**login required**) |
+| GET | `/api/v1/agents/{id}` | Agent details (**login required**) |
+| DELETE | `/api/v1/agents/{id}` | Remove agent (**login required**) |
+| GET | `/api/v1/agents/{id}/metrics` | Metrics history (**login required**) |
+| POST | `/api/v1/agents/{id}/command` | Send command (**login required**) |
+| GET | `/api/v1/agents/{id}/commands` | Command history (**login required**) |
+| GET | `/api/v1/alerts` | List alerts (**login required**) |
+| GET | `/api/v1/alerts/rules` | List alert rules (**login required**) |
+| POST | `/api/v1/alerts/rules` | Create alert rule (**login required**) |
+| DELETE | `/api/v1/alerts/rules/{id}` | Delete alert rule (**login required**) |
 
 ## Web UI
 
 | Page | URL |
 |------|-----|
+| Setup (first run) | `/setup` |
+| Login | `/login` |
+| Logout | `/logout` (POST) |
 | Dashboard | `/` |
 | Agent Detail | `/ui/agents/{id}` |
 | Alerts | `/ui/alerts` |
@@ -112,8 +158,17 @@ deploy/              - Dockerfile + docker-compose
 scripts/             - Build scripts
 ```
 
+## Sıfırlama / Kaldırma (Sunucu)
+
+Her şeyi kaldırıp temiz kurulum için (db dahil):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/cevrimxe/go-mini-rmm/main/deploy/teardown.sh | bash
+curl -sSL https://raw.githubusercontent.com/cevrimxe/go-mini-rmm/main/deploy/setup-docker.sh | bash
+```
+
 ## Tech Stack
-- **Go** 1.21+ with `log/slog`
+- **Go** 1.25+ with `log/slog`
 - **chi** - HTTP router
 - **gorilla/websocket** - WebSocket
 - **gopsutil** - System metrics
