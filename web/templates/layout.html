@@ -5,86 +5,264 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} - Mini RMM</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.min.css">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <style>
         :root {
-            --pico-font-size: 15px;
+            --pico-font-size: 14px;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #eab308;
+            --surface: #1e1e2e;
+            --surface-hover: #2a2a3e;
         }
-        nav {
-            padding: 0.5rem 1rem;
+        body { background: #11111b; }
+
+        /* Nav */
+        .top-nav {
+            background: var(--surface);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 0.6rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
         }
+        .top-nav .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .top-nav .brand span { color: #cdd6f4; }
+        .nav-links {
+            display: flex;
+            gap: 0.25rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .nav-links a {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.45rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #a6adc8;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        .nav-links a:hover, .nav-links a.active {
+            background: rgba(99,102,241,0.15);
+            color: var(--accent-hover);
+        }
+
+        /* Badges */
         .badge {
-            display: inline-block;
-            padding: 0.15rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
             font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
-        .badge-online { background: #22c55e; color: #fff; }
-        .badge-offline { background: #ef4444; color: #fff; }
+        .badge-online { background: rgba(34,197,94,0.15); color: var(--green); }
+        .badge-offline { background: rgba(239,68,68,0.15); color: var(--red); }
+        .badge-warning { background: rgba(234,179,8,0.15); color: var(--yellow); }
+        .badge-info { background: rgba(99,102,241,0.15); color: var(--accent-hover); }
+        .badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .badge-online::before { box-shadow: 0 0 6px var(--green); }
+
+        /* Metric bars */
         .metric-bar {
-            height: 8px;
-            border-radius: 4px;
-            background: var(--pico-muted-border-color);
+            height: 6px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.06);
             overflow: hidden;
+            margin-bottom: 2px;
         }
         .metric-bar-fill {
             height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s;
+            border-radius: 6px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .fill-green { background: #22c55e; }
-        .fill-yellow { background: #eab308; }
-        .fill-red { background: #ef4444; }
+        .fill-green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+        .fill-yellow { background: linear-gradient(90deg, #eab308, #facc15); }
+        .fill-red { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+        /* Stat cards */
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            padding: 1.2rem;
+            border-radius: 12px;
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .stat-card h3 {
+            margin: 0 0 0.4rem 0;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6c7086;
+        }
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        /* Table */
+        table {
+            font-size: 0.85rem;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        thead th {
+            background: var(--surface);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #6c7086;
+            font-weight: 600;
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        tbody tr {
+            transition: background 0.1s;
+        }
+        tbody tr:hover {
+            background: var(--surface-hover);
+        }
+        td { padding: 0.6rem 0.8rem; }
+        td a {
+            color: var(--accent-hover);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        td a:hover { text-decoration: underline; }
+
+        /* Terminal */
         .terminal-output {
-            background: #1a1a2e;
-            color: #0f0;
-            padding: 1rem;
-            border-radius: 8px;
-            font-family: monospace;
+            background: #0d0d1a;
+            color: #a6e3a1;
+            padding: 1rem 1.2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.04);
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
             white-space: pre-wrap;
             max-height: 400px;
             overflow-y: auto;
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+        .terminal-output::-webkit-scrollbar { width: 6px; }
+        .terminal-output::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+        /* Buttons */
+        button, [type="submit"] {
+            border-radius: 8px !important;
+            font-weight: 600;
             font-size: 0.85rem;
         }
-        .grid-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+        .btn-sm {
+            padding: 0.3rem 0.7rem !important;
+            font-size: 0.75rem !important;
         }
-        .stat-card {
-            padding: 1rem;
-            border-radius: 8px;
-            background: var(--pico-card-background-color);
-            border: 1px solid var(--pico-muted-border-color);
-        }
-        .stat-card h3 {
-            margin: 0 0 0.5rem 0;
-            font-size: 0.85rem;
-            color: var(--pico-muted-color);
-        }
-        .stat-card .value {
-            font-size: 1.8rem;
+
+        /* Section headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 2rem 0 1rem 0;
+            font-size: 1rem;
             font-weight: 700;
+            color: #cdd6f4;
         }
-        table { font-size: 0.9rem; }
+
+        /* Input */
+        input, select {
+            border-radius: 8px !important;
+            background: var(--surface) !important;
+            border-color: rgba(255,255,255,0.08) !important;
+        }
+        input:focus, select:focus {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 2px rgba(99,102,241,0.2) !important;
+        }
+
+        /* Fade in animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        main { animation: fadeIn 0.3s ease-out; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #45475a;
+            font-size: 0.75rem;
+        }
+
+        /* Pulse for online dot */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .badge-online::before { animation: pulse 2s ease-in-out infinite; }
     </style>
 </head>
 <body>
-    <nav class="container-fluid">
-        <ul>
-            <li><a href="/"><strong>Mini RMM</strong></a></li>
+    <header class="top-nav">
+        <a href="/" class="brand">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <span>Mini RMM</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="/">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Dashboard
+            </a></li>
+            <li><a href="/ui/alerts">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Alerts
+            </a></li>
         </ul>
-        <ul>
-            <li><a href="/">Dashboard</a></li>
-            <li><a href="/ui/alerts">Alerts</a></li>
-        </ul>
-    </nav>
-    <main class="container">
+    </header>
+    <main class="container" style="margin-top:1.5rem">
         {{template "content" .}}
     </main>
-    <footer class="container">
-        <small>Go Mini RMM &copy; 2026</small>
-    </footer>
+    <footer>Go Mini RMM &copy; 2026</footer>
 </body>
 </html>
