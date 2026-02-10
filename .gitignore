@@ -5,10 +5,8 @@ bin/
 *.dll
 *.so
 *.dylib
-server
-agent
-server.exe
-agent.exe
+/server
+/agent
 
 # Database
 *.db

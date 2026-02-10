@@ -1,0 +1,58 @@
+package db
+
+const schema = `
+CREATE TABLE IF NOT EXISTS agents (
+	id TEXT PRIMARY KEY,
+	hostname TEXT NOT NULL,
+	os TEXT NOT NULL DEFAULT '',
+	ip TEXT NOT NULL DEFAULT '',
+	version TEXT NOT NULL DEFAULT '',
+	last_heartbeat DATETIME,
+	status TEXT NOT NULL DEFAULT 'offline',
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS metrics (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	agent_id TEXT NOT NULL REFERENCES agents(id),
+	cpu_percent REAL NOT NULL DEFAULT 0,
+	memory_percent REAL NOT NULL DEFAULT 0,
+	disk_percent REAL NOT NULL DEFAULT 0,
+	timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_metrics_agent_id ON metrics(agent_id);
+CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
+
+CREATE TABLE IF NOT EXISTS commands (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	agent_id TEXT NOT NULL REFERENCES agents(id),
+	command TEXT NOT NULL,
+	stdout TEXT NOT NULL DEFAULT '',
+	stderr TEXT NOT NULL DEFAULT '',
+	exit_code INTEGER NOT NULL DEFAULT -1,
+	status TEXT NOT NULL DEFAULT 'pending',
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_commands_agent_id ON commands(agent_id);
+
+CREATE TABLE IF NOT EXISTS alert_rules (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	metric TEXT NOT NULL,
+	operator TEXT NOT NULL,
+	threshold REAL NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS alerts (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	rule_id INTEGER NOT NULL REFERENCES alert_rules(id),
+	agent_id TEXT NOT NULL REFERENCES agents(id),
+	message TEXT NOT NULL,
+	resolved INTEGER NOT NULL DEFAULT 0,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_alerts_agent_id ON alerts(agent_id);
+`
