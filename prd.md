@@ -21,6 +21,7 @@ Go ile yazılmış, agent-server mimarisinde mini bir Remote Monitoring and Mana
 - [x] Docker Compose deployment
 - [x] Multi-stage Dockerfile'lar (server + agent)
 - [x] Cross-compile build script
+- [x] Audit logging
 
 ### Gelecek İyileştirmeler
 - [ ] Agent authentication (JWT/API key validation)
@@ -32,7 +33,6 @@ Go ile yazılmış, agent-server mimarisinde mini bir Remote Monitoring and Mana
 - [ ] File transfer (upload/download)
 - [ ] Multi-tenant support
 - [ ] Rate limiting
-- [ ] Audit logging
 
 ## Teknoloji Stack
 - **Dil**: Go 1.21+

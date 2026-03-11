@@ -1,0 +1,39 @@
+{{define "content"}}
+<div class="section-header">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+    Audit Logs
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Logs}}
+            <tr>
+                <td class="text-muted">{{.ID}}</td>
+                <td style="white-space:nowrap">{{.CreatedAt.Format "2006-01-02 15:04:05"}}</td>
+                <td><strong>{{.Username}}</strong></td>
+                <td><span class="badge badge-info">{{.Action}}</span></td>
+                <td><code>{{.Target}}</code></td>
+                <td><span style="font-family:monospace;font-size:0.8rem;color:var(--muted)">{{.Details}}</span></td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="6" style="text-align:center; padding: 2rem; color: var(--dim)">No audit logs found.</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

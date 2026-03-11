@@ -46,6 +46,7 @@ func NewWebHandler(store *db.Store, hub *ws.Hub) *WebHandler {
 		"dashboard":    parseTemplate("dashboard.html"),
 		"agent_detail": parseTemplate("agent_detail.html"),
 		"alerts":       parseTemplate("alerts.html"),
+		"audit_logs":   parseTemplate("audit_logs.html"),
 	}
 
 	return &WebHandler{store: store, hub: hub, templates: templates}
@@ -145,6 +146,18 @@ func (h *WebHandler) Alerts(w http.ResponseWriter, r *http.Request) {
 		"Alerts": alerts,
 		"Rules":  rules,
 		"Agents": agents,
+	})
+}
+
+func (h *WebHandler) AuditLogs(w http.ResponseWriter, r *http.Request) {
+	logs, _ := h.store.GetAuditLogs(100)
+	if logs == nil {
+		logs = []models.AuditLog{}
+	}
+
+	h.render(w, "audit_logs", map[string]interface{}{
+		"Title": "Audit Logs",
+		"Logs":  logs,
 	})
 }
 

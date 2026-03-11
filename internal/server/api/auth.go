@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"html/template"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cevrimxe/go-mini-rmm/internal/models"
 	"github.com/cevrimxe/go-mini-rmm/internal/server/db"
 	"github.com/cevrimxe/go-mini-rmm/web"
 	"golang.org/x/crypto/bcrypt"
@@ -45,8 +47,22 @@ func (h *AuthHandler) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), userContextKey, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+type contextKey string
+
+const userContextKey contextKey = "user"
+
+// GetUserFromContext retrieves the authenticated user from the request context.
+func GetUserFromContext(r *http.Request) *models.User {
+	user, ok := r.Context().Value(userContextKey).(*models.User)
+	if !ok {
+		return nil
+	}
+	return user
 }
 
 func (h *AuthHandler) SetupPage(w http.ResponseWriter, r *http.Request) {

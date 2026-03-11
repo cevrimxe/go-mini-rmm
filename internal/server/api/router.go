@@ -53,6 +53,7 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 		r.Get("/", webHandler.Dashboard)
 		r.Get("/ui/agents/{id}", webHandler.AgentDetail)
 		r.Get("/ui/alerts", webHandler.Alerts)
+		r.Get("/ui/audit-logs", webHandler.AuditLogs)
 		r.Post("/logout", authHandler.Logout)
 
 		// Management API

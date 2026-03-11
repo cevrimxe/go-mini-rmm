@@ -46,6 +46,17 @@ func (h *CommandHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Insert audit log
+	user := GetUserFromContext(r)
+	username := "system"
+	if user != nil {
+		username = user.Username
+	}
+	details := `{"command": "` + req.Command + `"}`
+	if err := h.Store.InsertAuditLog(username, "command_execution", agentID, details); err != nil {
+		slog.Error("failed to insert audit log", "error", err)
+	}
+
 	// Send via WebSocket
 	msg := models.WSMessage{
 		Type: "command",
