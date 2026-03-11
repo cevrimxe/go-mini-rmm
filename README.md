@@ -8,6 +8,7 @@ Lightweight **Remote Monitoring & Management** tool written in Go.
 - Remote command execution over WebSocket
 - Alert engine (threshold rules + offline detection)
 - Embedded web dashboard (htmx + PicoCSS)
+- Audit logging (track actions like command execution per user)
 - Agent auto-update from server
 - Docker Compose deployment; Watchtower for auto-updates on push
 
@@ -109,6 +110,7 @@ Runs server on 8080 with two demo agents.
 | Dashboard  | `/`                |
 | Agent detail | `/ui/agents/{id}` |
 | Alerts     | `/ui/alerts`       |
+| Audit Logs | `/ui/audit-logs`   |
 
 ## Tech stack
 
