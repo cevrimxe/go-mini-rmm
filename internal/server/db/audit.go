@@ -13,7 +13,7 @@ func (s *Store) InsertAuditLog(username, action, target, details string) error {
 }
 
 func (s *Store) GetAuditLogs(limit int) ([]models.AuditLog, error) {
-	rows, err := s.db.Query(`SELECT id, username, action, target, details, created_at FROM audit_logs ORDER BY created_at DESC LIMIT ?`, limit)
+	rows, err := s.db.Query(`SELECT id, username, action, target, details, created_at FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
 	}
