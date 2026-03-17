@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    container_name: rmm-server-demo
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - rmm-demo-network
+
+  agent-1:
+    image: ubuntu:24.04
+    container_name: rmm-agent-1-demo
+    volumes:
+      - ./demo-agent-entrypoint.sh:/entrypoint.sh
+    command: sh /entrypoint.sh rmm-agent-1-demo
+    networks:
+      - rmm-demo-network
+    depends_on:
+      - server
+
+  agent-2:
+    image: ubuntu:24.04
+    container_name: rmm-agent-2-demo
+    volumes:
+      - ./demo-agent-entrypoint.sh:/entrypoint.sh
+    command: sh /entrypoint.sh rmm-agent-2-demo
+    networks:
+      - rmm-demo-network
+    depends_on:
+      - server
+
+  agent-3:
+    image: ubuntu:24.04
+    container_name: rmm-agent-3-demo
+    volumes:
+      - ./demo-agent-entrypoint.sh:/entrypoint.sh
+    command: sh /entrypoint.sh rmm-agent-3-demo
+    networks:
+      - rmm-demo-network
+    depends_on:
+      - server
+
+  agent-4:
+    image: ubuntu:24.04
+    container_name: rmm-agent-4-demo
+    volumes:
+      - ./demo-agent-entrypoint.sh:/entrypoint.sh
+    command: sh /entrypoint.sh rmm-agent-4-demo
+    networks:
+      - rmm-demo-network
+    depends_on:
+      - server
+
+  agent-5:
+    image: ubuntu:24.04
+    container_name: rmm-agent-5-demo
+    volumes:
+      - ./demo-agent-entrypoint.sh:/entrypoint.sh
+    command: sh /entrypoint.sh rmm-agent-5-demo
+    networks:
+      - rmm-demo-network
+    depends_on:
+      - server
+
+networks:
+  rmm-demo-network:
+    driver: bridge
