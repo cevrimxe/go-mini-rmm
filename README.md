@@ -99,7 +99,16 @@ cd deploy
 docker compose up -d
 ```
 
-Runs server on 8080 with two demo agents.
+Runs server on 8080 with two static agents.
+
+### Docker Compose (demo with 5 auto-installing agents)
+
+```bash
+cd deploy
+docker compose -f docker-compose.demo.yml up -d --build
+```
+
+Runs the actual server on port 8080 along with 5 active Ubuntu agents. These agents will automatically download and install the agent binary from the server (`install.sh`), simulating a real-world deployment scenario entirely within Docker. Verify by visiting `http://localhost:8080`.
 
 ## Web UI
 
