@@ -98,9 +98,13 @@ func (h *Hub) readPump(conn *websocket.Conn, agentID string) {
 			continue
 		}
 
-		switch msg.Type {
+	switch msg.Type {
 		case "command_result":
 			h.handleCommandResult(msg.Payload)
+		case "file_download_result":
+			h.handleFileTransferResult(msg.Payload)
+		case "file_upload_result":
+			h.handleFileTransferResult(msg.Payload)
 		default:
 			slog.Debug("ws unknown message type", "type", msg.Type)
 		}
@@ -120,6 +124,31 @@ func (h *Hub) handleCommandResult(payload interface{}) {
 
 	if err := h.store.UpdateCommandResult(result.CommandID, result.Stdout, result.Stderr, result.ExitCode); err != nil {
 		slog.Error("update command result failed", "error", err)
+	}
+}
+
+func (h *Hub) handleFileTransferResult(payload interface{}) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	var result struct {
+		TransferID int64  `json:"transfer_id"`
+		Success    bool   `json:"success"`
+		Error      string `json:"error"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		slog.Warn("invalid file transfer result", "error", err)
+		return
+	}
+
+	status := models.TransferDone
+	if !result.Success {
+		status = models.TransferFailed
+	}
+
+	if err := h.store.UpdateFileTransferStatus(result.TransferID, status, result.Error); err != nil {
+		slog.Error("update file transfer status failed", "error", err)
 	}
 }
 

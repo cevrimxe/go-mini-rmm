@@ -30,7 +30,7 @@ Go ile yazılmış, agent-server mimarisinde mini bir Remote Monitoring and Mana
 - [ ] Grafana dashboard template
 - [ ] Agent grouping / tagging
 - [ ] Scheduled tasks (cron-like)
-- [ ] File transfer (upload/download)
+- [x] File transfer (upload/download)
 - [ ] Multi-tenant support
 - [ ] Rate limiting
 

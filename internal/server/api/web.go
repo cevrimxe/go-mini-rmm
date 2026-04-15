@@ -29,6 +29,7 @@ type agentRow struct {
 var funcMap = template.FuncMap{
 	"timeAgo":     timeAgo,
 	"metricColor": metricColor,
+	"formatBytes": formatBytes,
 }
 
 func parseTemplate(name string) *template.Template {
@@ -117,11 +118,17 @@ func (h *WebHandler) AgentDetail(w http.ResponseWriter, r *http.Request) {
 		commands = []models.Command{}
 	}
 
+	transfers, _ := h.store.GetFileTransfersByAgent(id, 20)
+	if transfers == nil {
+		transfers = []models.FileTransfer{}
+	}
+
 	h.render(w, "agent_detail", map[string]interface{}{
-		"Title":    agent.Hostname,
-		"Agent":    agent,
-		"Metric":   metric,
-		"Commands": commands,
+		"Title":         agent.Hostname,
+		"Agent":         agent,
+		"Metric":        metric,
+		"Commands":      commands,
+		"FileTransfers": transfers,
 	})
 }
 
@@ -199,4 +206,17 @@ func metricColor(pct float64) string {
 	default:
 		return "fill-green"
 	}
+}
+
+func formatBytes(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }

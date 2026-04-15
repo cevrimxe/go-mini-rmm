@@ -80,4 +80,19 @@ CREATE TABLE IF NOT EXISTS alerts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_alerts_agent_id ON alerts(agent_id);
+
+CREATE TABLE IF NOT EXISTS file_transfers (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	agent_id TEXT NOT NULL REFERENCES agents(id),
+	file_name TEXT NOT NULL,
+	file_size INTEGER NOT NULL DEFAULT 0,
+	direction TEXT NOT NULL,
+	status TEXT NOT NULL DEFAULT 'pending',
+	storage_path TEXT NOT NULL DEFAULT '',
+	remote_path TEXT NOT NULL DEFAULT '',
+	error TEXT NOT NULL DEFAULT '',
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_file_transfers_agent_id ON file_transfers(agent_id);
 `

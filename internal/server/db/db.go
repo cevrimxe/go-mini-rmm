@@ -312,3 +312,66 @@ func (s *Store) CleanExpiredSessions() error {
 	_, err := s.db.Exec(`DELETE FROM sessions WHERE expires_at < ?`, time.Now().UTC())
 	return err
 }
+
+// ---- File Transfers ----
+
+func (s *Store) CreateFileTransfer(agentID, fileName string, fileSize int64, direction models.TransferDirection, storagePath, remotePath string) (*models.FileTransfer, error) {
+	res, err := s.db.Exec(`INSERT INTO file_transfers (agent_id, file_name, file_size, direction, status, storage_path, remote_path) VALUES (?, ?, ?, ?, 'pending', ?, ?)`,
+		agentID, fileName, fileSize, direction, storagePath, remotePath)
+	if err != nil {
+		return nil, err
+	}
+	id, _ := res.LastInsertId()
+	return &models.FileTransfer{
+		ID:          id,
+		AgentID:     agentID,
+		FileName:    fileName,
+		FileSize:    fileSize,
+		Direction:   direction,
+		Status:      models.TransferPending,
+		StoragePath: storagePath,
+		RemotePath:  remotePath,
+		CreatedAt:   time.Now().UTC(),
+	}, nil
+}
+
+func (s *Store) UpdateFileTransferStatus(id int64, status models.TransferStatus, errMsg string) error {
+	_, err := s.db.Exec(`UPDATE file_transfers SET status=?, error=? WHERE id=?`, status, errMsg, id)
+	return err
+}
+
+func (s *Store) UpdateFileTransferStorage(id int64, storagePath string, fileSize int64) error {
+	_, err := s.db.Exec(`UPDATE file_transfers SET storage_path=?, file_size=? WHERE id=?`, storagePath, fileSize, id)
+	return err
+}
+
+func (s *Store) GetFileTransfer(id int64) (*models.FileTransfer, error) {
+	var ft models.FileTransfer
+	err := s.db.QueryRow(`SELECT id, agent_id, file_name, file_size, direction, status, storage_path, remote_path, error, created_at FROM file_transfers WHERE id=?`, id).
+		Scan(&ft.ID, &ft.AgentID, &ft.FileName, &ft.FileSize, &ft.Direction, &ft.Status, &ft.StoragePath, &ft.RemotePath, &ft.Error, &ft.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &ft, nil
+}
+
+func (s *Store) GetFileTransfersByAgent(agentID string, limit int) ([]models.FileTransfer, error) {
+	rows, err := s.db.Query(`SELECT id, agent_id, file_name, file_size, direction, status, storage_path, remote_path, error, created_at FROM file_transfers WHERE agent_id=? ORDER BY created_at DESC LIMIT ?`, agentID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var transfers []models.FileTransfer
+	for rows.Next() {
+		var ft models.FileTransfer
+		if err := rows.Scan(&ft.ID, &ft.AgentID, &ft.FileName, &ft.FileSize, &ft.Direction, &ft.Status, &ft.StoragePath, &ft.RemotePath, &ft.Error, &ft.CreatedAt); err != nil {
+			return nil, err
+		}
+		transfers = append(transfers, ft)
+	}
+	return transfers, rows.Err()
+}

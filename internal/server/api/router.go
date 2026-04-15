@@ -24,6 +24,7 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 	updateHandler := &update.Handler{}
 	webHandler := NewWebHandler(store, hub)
 	authHandler := NewAuthHandler(store)
+	ftHandler := NewFileTransferHandler(store, hub, "uploads")
 
 	// ── Public routes (no auth) ──
 	r.Get("/login", authHandler.LoginPage)
@@ -39,6 +40,10 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 	r.Post("/api/v1/heartbeat", agentHandler.Heartbeat)
 	r.Get("/api/v1/update/check", updateHandler.Check)
 	r.Get("/api/v1/update/download", updateHandler.Download)
+
+	// Agent file transfer endpoints (agent pulls/pushes files)
+	r.Get("/api/v1/files/{transferID}/serve", ftHandler.ServeFile)
+	r.Post("/api/v1/files/{transferID}/receive", ftHandler.ReceiveFile)
 
 	// WebSocket
 	r.Get("/ws/agent", func(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +72,12 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 		r.Get("/api/v1/alerts/rules", alertHandler.ListRules)
 		r.Post("/api/v1/alerts/rules", alertHandler.CreateRule)
 		r.Delete("/api/v1/alerts/rules/{id}", alertHandler.DeleteRule)
+
+		// File transfer (user-initiated)
+		r.Post("/api/v1/agents/{id}/files/upload", ftHandler.Upload)
+		r.Post("/api/v1/agents/{id}/files/download", ftHandler.RequestDownload)
+		r.Get("/api/v1/agents/{id}/files", ftHandler.List)
+		r.Get("/api/v1/files/{transferID}/download", ftHandler.DownloadFile)
 	})
 
 	// Static files
