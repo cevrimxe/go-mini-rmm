@@ -230,24 +230,28 @@ func (h *FileTransferHandler) ServeFile(w http.ResponseWriter, r *http.Request) 
 func (h *FileTransferHandler) ReceiveFile(w http.ResponseWriter, r *http.Request) {
 	transferID, err := strconv.ParseInt(chi.URLParam(r, "transferID"), 10, 64)
 	if err != nil {
+		slog.Warn("ReceiveFile: invalid transfer id", "err", err)
 		http.Error(w, "invalid transfer id", http.StatusBadRequest)
 		return
 	}
 
 	ft, err := h.Store.GetFileTransfer(transferID)
 	if err != nil || ft == nil {
+		slog.Warn("ReceiveFile: transfer not found", "id", transferID)
 		http.Error(w, "transfer not found", http.StatusNotFound)
 		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		http.Error(w, "file too large (max 50MB)", http.StatusBadRequest)
+		slog.Warn("ReceiveFile: parse multipart form failed", "err", err)
+		http.Error(w, fmt.Sprintf("parse form error: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
+		slog.Warn("ReceiveFile: form file missing", "err", err)
 		http.Error(w, "file required", http.StatusBadRequest)
 		return
 	}
@@ -300,4 +304,20 @@ func (h *FileTransferHandler) DownloadFile(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, ft.FileName))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeFile(w, r, ft.StoragePath)
+}
+
+// Browse returns directory listing from the agent via WebSocket
+func (h *FileTransferHandler) Browse(w http.ResponseWriter, r *http.Request) {
+	agentID := chi.URLParam(r, "id")
+	path := r.URL.Query().Get("path")
+
+	result, err := h.Hub.BrowseAgent(agentID, path)
+	if err != nil {
+		slog.Warn("browse agent failed", "agent_id", agentID, "error", err)
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(result)
 }

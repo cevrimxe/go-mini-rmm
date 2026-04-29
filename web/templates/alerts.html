@@ -62,7 +62,7 @@
             <td><strong>{{printf "%.0f" .Threshold}}%</strong></td>
             <td>{{if .AgentID}}{{.AgentID}}{{else}}<span class="text-muted">All</span>{{end}}</td>
             <td>
-                <button class="outline secondary btn-sm" onclick="if(confirm('Delete this rule?'))fetch('/api/v1/alerts/rules/'+{{.ID}},{method:'DELETE'}).then(()=>location.reload())">Delete</button>
+                <button class="btn btn-outline btn-sm" onclick="if(confirm('Delete this rule?'))fetch('/api/v1/alerts/rules/'+{{.ID}},{method:'DELETE'}).then(()=>location.reload())">Delete</button>
             </td>
         </tr>
         {{else}}

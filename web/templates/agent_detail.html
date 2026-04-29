@@ -16,7 +16,7 @@
         Key: <code>{{.Agent.ID}}</code> &middot; {{.Agent.Hostname}} &middot; {{.Agent.OS}} &middot; {{.Agent.IP}} &middot; v{{.Agent.Version}} &middot; Last seen {{timeAgo .Agent.LastHeartbeat}}
     </p>
     <p style="margin:0.5rem 0 0 0">
-        <button type="button" class="outline secondary btn-sm" style="color:var(--red);border-color:var(--red)" onclick="removeAgent('{{.Agent.ID}}')">Remove agent</button>
+        <button type="button" class="btn btn-outline btn-sm" style="color:var(--red);border-color:rgba(239, 68, 68, 0.3)" onclick="removeAgent('{{.Agent.ID}}')">Remove agent</button>
     </p>
 </div>
 
@@ -71,16 +71,40 @@
         <h3 style="margin:0 0 0.6rem 0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--dim)">Upload to Agent</h3>
         <form id="uploadForm" onsubmit="uploadFile(event)" enctype="multipart/form-data">
             <input type="file" id="uploadFile" name="file" style="margin-bottom:0.5rem;font-size:0.8rem" required>
-            <input type="text" id="uploadPath" name="remote_path" placeholder="Target path on agent (e.g. /tmp/file.txt)" style="margin-bottom:0.5rem" required>
+            <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem">
+                <input type="text" id="uploadPath" name="remote_path" placeholder="Target folder on agent" style="flex:1;margin:0" required readonly>
+                <button type="button" class="btn btn-outline btn-sm" onclick="openBrowser('upload')" style="white-space:nowrap;margin:0">Browse</button>
+            </div>
             <button type="submit" class="btn-accent btn-sm" id="uploadBtn" style="width:100%">Upload</button>
         </form>
     </div>
     <div class="stat-card" style="padding:1rem">
         <h3 style="margin:0 0 0.6rem 0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--dim)">Download from Agent</h3>
-        <form id="downloadForm" onsubmit="requestDownload(event)">
-            <input type="text" id="downloadPath" placeholder="File path on agent (e.g. /etc/hostname)" style="margin-bottom:0.5rem" required>
-            <button type="submit" class="btn-accent btn-sm" id="downloadBtn" style="width:100%">Download</button>
-        </form>
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem">
+            <input type="text" id="downloadPath" placeholder="Select a file from agent" style="flex:1;margin:0" required readonly>
+            <button type="button" class="btn btn-outline btn-sm" onclick="openBrowser('download')" style="white-space:nowrap;margin:0">Browse</button>
+        </div>
+        <button type="button" class="btn-accent btn-sm" id="downloadBtn" onclick="requestDownload()" style="width:100%">Download</button>
+    </div>
+</div>
+
+<!-- File Browser Modal -->
+<div id="fbModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border-radius:12px;border:1px solid rgba(255,255,255,0.1);width:90%;max-width:650px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+        <div style="padding:1rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between">
+            <div>
+                <h3 id="fbTitle" style="margin:0;font-size:0.95rem">File Browser</h3>
+                <div id="fbPath" style="font-size:0.72rem;color:var(--dim);margin-top:0.2rem;font-family:monospace;word-break:break-all"></div>
+            </div>
+            <button onclick="closeBrowser()" style="background:none;border:none;color:var(--dim);font-size:1.2rem;cursor:pointer;padding:0.2rem 0.5rem">&times;</button>
+        </div>
+        <div id="fbContent" style="flex:1;overflow-y:auto;padding:0.5rem 0;min-height:300px;">
+            <div style="text-align:center;padding:3rem;color:var(--dim)">Loading...</div>
+        </div>
+        <div id="fbFooter" style="padding:0.8rem 1.2rem;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:0.5rem;justify-content:flex-end">
+            <button onclick="closeBrowser()" class="btn btn-outline btn-sm">Cancel</button>
+            <button id="fbSelectBtn" onclick="selectFromBrowser()" class="btn-accent btn-sm" disabled>Select</button>
+        </div>
     </div>
 </div>
 
@@ -129,7 +153,7 @@
             <td class="text-muted text-sm">{{timeAgo .CreatedAt}}</td>
             <td>
                 {{if and (eq (printf "%s" .Direction) "from_agent") (eq (printf "%s" .Status) "done")}}
-                <a href="/api/v1/files/{{.ID}}/download" class="outline secondary btn-sm" style="text-decoration:none;padding:0.25rem 0.5rem;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:0.7rem">Download</a>
+                <a href="/api/v1/files/{{.ID}}/download" class="btn btn-outline btn-sm" style="text-decoration:none;padding:0.25rem 0.5rem;font-size:0.7rem">Download</a>
                 {{end}}
                 {{if and (ne (printf "%s" .Status) "done") (ne (printf "%s" .Status) "pending") .Error}}
                 <span style="color:var(--red);font-size:0.7rem" title="{{.Error}}">⚠</span>
@@ -176,7 +200,7 @@
             </td>
             <td><code>{{.ExitCode}}</code></td>
             <td class="text-muted text-sm">{{timeAgo .CreatedAt}}</td>
-            <td><button class="outline secondary btn-sm" onclick="showOutput('{{.Stdout}}','{{.Stderr}}','{{.Command}}')">View</button></td>
+            <td><button class="btn btn-outline btn-sm" onclick="showOutput('{{.Stdout}}','{{.Stderr}}','{{.Command}}')">View</button></td>
         </tr>
         {{else}}
         <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--dim)">No commands yet.</td></tr>
@@ -257,9 +281,16 @@ async function uploadFile(e) {
     btn.disabled = true;
     btn.textContent = 'Uploading...';
 
+    var fileInput = document.getElementById('uploadFile');
+    var folder = document.getElementById('uploadPath').value;
+    var fileName = fileInput.files[0].name;
+    // Combine folder + filename
+    var sep = folder.indexOf('\\') >= 0 ? '\\' : '/';
+    var remotePath = folder.endsWith(sep) ? folder + fileName : folder + sep + fileName;
+
     var formData = new FormData();
-    formData.append('file', document.getElementById('uploadFile').files[0]);
-    formData.append('remote_path', document.getElementById('uploadPath').value);
+    formData.append('file', fileInput.files[0]);
+    formData.append('remote_path', remotePath);
 
     try {
         var resp = await fetch('/api/v1/agents/' + agentID + '/files/upload', {
@@ -267,7 +298,7 @@ async function uploadFile(e) {
             body: formData
         });
         if (resp.ok) {
-            showFtStatus('File upload initiated! The file will be transferred to the agent.', false);
+            showFtStatus('File upload initiated! Transferring to: ' + remotePath, false);
             setTimeout(function(){ location.reload(); }, 2000);
         } else {
             var text = await resp.text();
@@ -280,8 +311,9 @@ async function uploadFile(e) {
     btn.textContent = 'Upload';
 }
 
-async function requestDownload(e) {
-    e.preventDefault();
+async function requestDownload() {
+    var path = document.getElementById('downloadPath').value;
+    if (!path) { showFtStatus('Please select a file first.', true); return; }
     var btn = document.getElementById('downloadBtn');
     btn.disabled = true;
     btn.textContent = 'Requesting...';
@@ -290,10 +322,10 @@ async function requestDownload(e) {
         var resp = await fetch('/api/v1/agents/' + agentID + '/files/download', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({remote_path: document.getElementById('downloadPath').value})
+            body: JSON.stringify({remote_path: path})
         });
         if (resp.ok) {
-            showFtStatus('Download request sent! The file will appear in the transfer history when complete.', false);
+            showFtStatus('Download request sent! The file will appear in transfer history when complete.', false);
             setTimeout(function(){ location.reload(); }, 3000);
         } else {
             var text = await resp.text();
@@ -306,6 +338,154 @@ async function requestDownload(e) {
     btn.textContent = 'Download';
 }
 
-setTimeout(function(){ location.reload(); }, 30000);
+// ---- File Browser Modal ----
+var fbMode = '';  // 'upload' (select folder) or 'download' (select file)
+var fbCurrentPath = '';
+var fbSelectedFile = '';
+
+function openBrowser(mode) {
+    fbMode = mode;
+    fbSelectedFile = '';
+    document.getElementById('fbSelectBtn').disabled = true;
+    if (mode === 'upload') {
+        document.getElementById('fbTitle').textContent = 'Select Target Folder';
+        document.getElementById('fbSelectBtn').textContent = 'Select Folder';
+    } else {
+        document.getElementById('fbTitle').textContent = 'Select File to Download';
+        document.getElementById('fbSelectBtn').textContent = 'Select File';
+    }
+    document.getElementById('fbModal').style.display = 'flex';
+    userActive = true;
+    browseTo('');
+}
+
+function closeBrowser() {
+    document.getElementById('fbModal').style.display = 'none';
+    userActive = false;
+}
+
+async function browseTo(path) {
+    document.getElementById('fbContent').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--dim)">Loading...</div>';
+    document.getElementById('fbPath').textContent = path || '(root)';
+    fbSelectedFile = '';
+    if (fbMode === 'upload') {
+        // In upload mode, the current folder is always selectable
+        document.getElementById('fbSelectBtn').disabled = false;
+    } else {
+        document.getElementById('fbSelectBtn').disabled = true;
+    }
+
+    try {
+        var resp = await fetch('/api/v1/agents/' + agentID + '/browse?path=' + encodeURIComponent(path));
+        if (!resp.ok) {
+            var errText = await resp.text();
+            document.getElementById('fbContent').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--red)">Error: ' + errText + '</div>';
+            return;
+        }
+        var data = await resp.json();
+        if (data.error) {
+            document.getElementById('fbContent').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--red)">Error: ' + data.error + '</div>';
+            return;
+        }
+
+        fbCurrentPath = data.path || path;
+        document.getElementById('fbPath').textContent = fbCurrentPath;
+        renderBrowser(data.entries || [], fbCurrentPath);
+    } catch(err) {
+        document.getElementById('fbContent').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--red)">Error: ' + err.message + '</div>';
+    }
+}
+
+function renderBrowser(entries, currentPath) {
+    var html = '';
+    var sep = currentPath.indexOf('\\') >= 0 ? '\\' : '/';
+
+    // Parent directory link
+    if (currentPath !== '/' && currentPath !== 'C:\\') {
+        var parts = currentPath.replace(/[\/\\]+$/, '').split(/[\/\\]/);
+        parts.pop();
+        var parent = parts.join(sep) || sep;
+        if (sep === '\\' && parent === '\\') parent = 'C:\\';
+        html += '<div class="fb-item" ondblclick="browseTo(\'' + escJs(parent) + '\')" style="cursor:pointer;padding:0.45rem 1.2rem;display:flex;align-items:center;gap:0.6rem;transition:background 0.1s" onmouseenter="this.style.background=\'var(--surface-hover)\'" onmouseleave="this.style.background=\'transparent\'">';
+        html += '<span style="font-size:1rem">⬆️</span>';
+        html += '<span style="font-size:0.82rem;color:var(--muted)">..</span>';
+        html += '</div>';
+    }
+
+    // Sort: dirs first, then files
+    var dirs = entries.filter(function(e) { return e.is_dir; }).sort(function(a,b) { return a.name.localeCompare(b.name); });
+    var files = entries.filter(function(e) { return !e.is_dir; }).sort(function(a,b) { return a.name.localeCompare(b.name); });
+
+    dirs.forEach(function(entry) {
+        var fullPath = currentPath.endsWith(sep) ? currentPath + entry.name : currentPath + sep + entry.name;
+        html += '<div class="fb-item" ondblclick="browseTo(\'' + escJs(fullPath) + '\')" style="cursor:pointer;padding:0.45rem 1.2rem;display:flex;align-items:center;gap:0.6rem;transition:background 0.1s" onmouseenter="this.style.background=\'var(--surface-hover)\'" onmouseleave="this.style.background=\'transparent\'">';
+        html += '<span style="font-size:1rem">📁</span>';
+        html += '<span style="font-size:0.82rem;font-weight:500">' + esc(entry.name) + '</span>';
+        html += '</div>';
+    });
+
+    files.forEach(function(entry) {
+        var fullPath = currentPath.endsWith(sep) ? currentPath + entry.name : currentPath + sep + entry.name;
+        var selectable = fbMode === 'download';
+        html += '<div class="fb-item" data-path="' + escAttr(fullPath) + '" ' + (selectable ? 'onclick="selectFile(this,\'' + escJs(fullPath) + '\')" style="cursor:pointer;' : 'style="cursor:default;opacity:0.5;') + 'padding:0.45rem 1.2rem;display:flex;align-items:center;gap:0.6rem;justify-content:space-between;transition:background 0.1s" onmouseenter="this.style.background=\'var(--surface-hover)\'" onmouseleave="if(!this.classList.contains(\'fb-selected\'))this.style.background=\'transparent\'">';
+        html += '<div style="display:flex;align-items:center;gap:0.6rem">';
+        html += '<span style="font-size:1rem">📄</span>';
+        html += '<span style="font-size:0.82rem">' + esc(entry.name) + '</span>';
+        html += '</div>';
+        html += '<span style="font-size:0.72rem;color:var(--dim)">' + formatSize(entry.size) + '</span>';
+        html += '</div>';
+    });
+
+    if (entries.length === 0) {
+        html = '<div style="text-align:center;padding:3rem;color:var(--dim)">Empty directory</div>';
+    }
+
+    document.getElementById('fbContent').innerHTML = html;
+}
+
+function selectFile(el, path) {
+    // Deselect previous
+    document.querySelectorAll('.fb-selected').forEach(function(e) {
+        e.classList.remove('fb-selected');
+        e.style.background = 'transparent';
+    });
+    el.classList.add('fb-selected');
+    el.style.background = 'rgba(99,102,241,0.2)';
+    fbSelectedFile = path;
+    document.getElementById('fbSelectBtn').disabled = false;
+}
+
+function selectFromBrowser() {
+    if (fbMode === 'upload') {
+        document.getElementById('uploadPath').value = fbCurrentPath;
+    } else if (fbMode === 'download' && fbSelectedFile) {
+        document.getElementById('downloadPath').value = fbSelectedFile;
+    }
+    closeBrowser();
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+    return (bytes / 1073741824).toFixed(1) + ' GB';
+}
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escJs(s) { return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+function escAttr(s) { return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;'); }
+
+// Smart auto-refresh: pause when user is interacting with forms or modal is open
+var userActive = false;
+document.querySelectorAll('input, select, textarea').forEach(function(el) {
+    el.addEventListener('focus', function() { userActive = true; });
+    el.addEventListener('blur', function() { userActive = false; });
+    el.addEventListener('change', function() { userActive = true; });
+});
+setInterval(function() {
+    if (!userActive && !document.querySelector('button:disabled') && document.getElementById('fbModal').style.display === 'none') {
+        location.reload();
+    }
+}, 30000);
 </script>
 {{end}}

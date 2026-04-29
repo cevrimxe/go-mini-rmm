@@ -89,6 +89,8 @@ func (e *Executor) connectAndListen(ctx context.Context) {
 			go e.handleFileDownload(conn, msg.Payload)
 		case "file_upload":
 			go e.handleFileUpload(conn, msg.Payload)
+		case "dir_list":
+			go e.handleDirList(conn, msg.Payload)
 		}
 	}
 }
@@ -303,6 +305,73 @@ func (e *Executor) handleFileUpload(conn *websocket.Conn, payload interface{}) {
 	resultData, _ := json.Marshal(result)
 	if err := conn.WriteMessage(websocket.TextMessage, resultData); err != nil {
 		slog.Error("failed to send file upload result", "error", err)
+	}
+}
+
+// handleDirList lists the contents of a directory and sends it back via WS
+func (e *Executor) handleDirList(conn *websocket.Conn, payload interface{}) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	var dlPayload struct {
+		RequestID string `json:"request_id"`
+		Path      string `json:"path"`
+	}
+	if err := json.Unmarshal(data, &dlPayload); err != nil {
+		slog.Warn("invalid dir_list payload", "error", err)
+		return
+	}
+
+	path := dlPayload.Path
+	if path == "" {
+		if runtime.GOOS == "windows" {
+			path = "C:\\"
+		} else {
+			path = "/"
+		}
+	}
+
+	type fileEntry struct {
+		Name  string `json:"name"`
+		IsDir bool   `json:"is_dir"`
+		Size  int64  `json:"size"`
+	}
+
+	var entries []fileEntry
+	errMsg := ""
+
+	dirEntries, err := os.ReadDir(path)
+	if err != nil {
+		errMsg = err.Error()
+	} else {
+		for _, entry := range dirEntries {
+			info, _ := entry.Info()
+			size := int64(0)
+			if info != nil {
+				size = info.Size()
+			}
+			entries = append(entries, fileEntry{
+				Name:  entry.Name(),
+				IsDir: entry.IsDir(),
+				Size:  size,
+			})
+		}
+	}
+
+	result := models.WSMessage{
+		Type: "dir_list_result",
+		Payload: map[string]interface{}{
+			"request_id": dlPayload.RequestID,
+			"path":       path,
+			"entries":    entries,
+			"error":      errMsg,
+		},
+	}
+	resultData, _ := json.Marshal(result)
+	if err := conn.WriteMessage(websocket.TextMessage, resultData); err != nil {
+		slog.Error("failed to send dir list result", "error", err)
 	}
 }
 

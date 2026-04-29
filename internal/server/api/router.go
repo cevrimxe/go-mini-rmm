@@ -77,6 +77,7 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 		r.Post("/api/v1/agents/{id}/files/upload", ftHandler.Upload)
 		r.Post("/api/v1/agents/{id}/files/download", ftHandler.RequestDownload)
 		r.Get("/api/v1/agents/{id}/files", ftHandler.List)
+		r.Get("/api/v1/agents/{id}/browse", ftHandler.Browse)
 		r.Get("/api/v1/files/{transferID}/download", ftHandler.DownloadFile)
 	})
 

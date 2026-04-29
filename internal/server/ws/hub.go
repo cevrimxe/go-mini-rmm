@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/cevrimxe/go-mini-rmm/internal/models"
 	"github.com/cevrimxe/go-mini-rmm/internal/server/db"
@@ -27,14 +28,19 @@ type Hub struct {
 	mu         sync.RWMutex
 	register   chan *agentConn
 	unregister chan string
+
+	// Directory listing request-response
+	dirRequests   map[string]chan json.RawMessage
+	dirRequestsMu sync.Mutex
 }
 
 func NewHub(store *db.Store) *Hub {
 	return &Hub{
-		store:      store,
-		agents:     make(map[string]*websocket.Conn),
-		register:   make(chan *agentConn),
-		unregister: make(chan string),
+		store:       store,
+		agents:      make(map[string]*websocket.Conn),
+		register:    make(chan *agentConn),
+		unregister:  make(chan string),
+		dirRequests: make(map[string]chan json.RawMessage),
 	}
 }
 
@@ -98,13 +104,15 @@ func (h *Hub) readPump(conn *websocket.Conn, agentID string) {
 			continue
 		}
 
-	switch msg.Type {
+		switch msg.Type {
 		case "command_result":
 			h.handleCommandResult(msg.Payload)
 		case "file_download_result":
 			h.handleFileTransferResult(msg.Payload)
 		case "file_upload_result":
 			h.handleFileTransferResult(msg.Payload)
+		case "dir_list_result":
+			h.handleDirListResult(message)
 		default:
 			slog.Debug("ws unknown message type", "type", msg.Type)
 		}
@@ -149,6 +157,73 @@ func (h *Hub) handleFileTransferResult(payload interface{}) {
 
 	if err := h.store.UpdateFileTransferStatus(result.TransferID, status, result.Error); err != nil {
 		slog.Error("update file transfer status failed", "error", err)
+	}
+}
+
+func (h *Hub) handleDirListResult(rawMessage []byte) {
+	// Extract request_id from the payload to route the response
+	var envelope struct {
+		Payload struct {
+			RequestID string `json:"request_id"`
+		} `json:"payload"`
+	}
+	if err := json.Unmarshal(rawMessage, &envelope); err != nil {
+		slog.Warn("invalid dir_list_result", "error", err)
+		return
+	}
+
+	h.dirRequestsMu.Lock()
+	ch, ok := h.dirRequests[envelope.Payload.RequestID]
+	if ok {
+		delete(h.dirRequests, envelope.Payload.RequestID)
+	}
+	h.dirRequestsMu.Unlock()
+
+	if ok {
+		// Extract just the payload
+		var msg struct {
+			Payload json.RawMessage `json:"payload"`
+		}
+		json.Unmarshal(rawMessage, &msg)
+		ch <- msg.Payload
+	}
+}
+
+// BrowseAgent sends a dir_list command to an agent and waits for the response
+func (h *Hub) BrowseAgent(agentID, path string) (json.RawMessage, error) {
+	requestID := fmt.Sprintf("dir_%d", time.Now().UnixNano())
+
+	// Create response channel
+	ch := make(chan json.RawMessage, 1)
+	h.dirRequestsMu.Lock()
+	h.dirRequests[requestID] = ch
+	h.dirRequestsMu.Unlock()
+
+	// Cleanup on exit
+	defer func() {
+		h.dirRequestsMu.Lock()
+		delete(h.dirRequests, requestID)
+		h.dirRequestsMu.Unlock()
+	}()
+
+	// Send command
+	msg := models.WSMessage{
+		Type: "dir_list",
+		Payload: map[string]interface{}{
+			"request_id": requestID,
+			"path":       path,
+		},
+	}
+	if err := h.SendToAgent(agentID, msg); err != nil {
+		return nil, err
+	}
+
+	// Wait for response with timeout
+	select {
+	case result := <-ch:
+		return result, nil
+	case <-time.After(10 * time.Second):
+		return nil, fmt.Errorf("timeout waiting for directory listing")
 	}
 }
 
