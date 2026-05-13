@@ -19,6 +19,7 @@ import (
 
 	"github.com/cevrimxe/go-mini-rmm/internal/models"
 	"github.com/gorilla/websocket"
+	psnet "github.com/shirou/gopsutil/v3/net"
 	"github.com/shirou/gopsutil/v3/process"
 )
 
@@ -96,6 +97,8 @@ func (e *Executor) connectAndListen(ctx context.Context) {
 			go e.handleProcessList(conn, msg.Payload)
 		case "process_kill":
 			go e.handleProcessKill(conn, msg.Payload)
+		case "net_list":
+			go e.handleNetList(conn, msg.Payload)
 		}
 	}
 }
@@ -506,6 +509,90 @@ func (e *Executor) handleProcessKill(conn *websocket.Conn, payload interface{}) 
 	resultData, _ := json.Marshal(result)
 	if err := conn.WriteMessage(websocket.TextMessage, resultData); err != nil {
 		slog.Error("failed to send process kill result", "error", err)
+	}
+}
+
+// handleNetList collects network connections (netstat-style) via gopsutil and sends them back via WS
+func (e *Executor) handleNetList(conn *websocket.Conn, payload interface{}) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	var nlPayload struct {
+		RequestID string `json:"request_id"`
+	}
+	if err := json.Unmarshal(data, &nlPayload); err != nil {
+		slog.Warn("invalid net_list payload", "error", err)
+		return
+	}
+
+	type netEntry struct {
+		PID         int32  `json:"pid"`
+		ProcessName string `json:"process_name"`
+		Type        string `json:"type"` // tcp / tcp6 / udp / udp6
+		LocalAddr   string `json:"local_addr"`
+		LocalPort   uint32 `json:"local_port"`
+		RemoteAddr  string `json:"remote_addr"`
+		RemotePort  uint32 `json:"remote_port"`
+		Status      string `json:"status"`
+	}
+
+	var entries []netEntry
+	errMsg := ""
+
+	conns, err := psnet.Connections("all")
+	if err != nil {
+		errMsg = err.Error()
+	} else {
+		// Cache process names so we don't query the same PID repeatedly
+		nameCache := map[int32]string{}
+		typeName := func(family uint32, sockType uint32) string {
+			proto := "tcp"
+			if sockType == 2 { // SOCK_DGRAM
+				proto = "udp"
+			}
+			if family == 10 || family == 23 { // AF_INET6
+				proto += "6"
+			}
+			return proto
+		}
+
+		for _, c := range conns {
+			name := ""
+			if c.Pid > 0 {
+				if cached, ok := nameCache[c.Pid]; ok {
+					name = cached
+				} else if p, err := process.NewProcess(c.Pid); err == nil {
+					n, _ := p.Name()
+					name = n
+					nameCache[c.Pid] = n
+				}
+			}
+			entries = append(entries, netEntry{
+				PID:         c.Pid,
+				ProcessName: name,
+				Type:        typeName(c.Family, c.Type),
+				LocalAddr:   c.Laddr.IP,
+				LocalPort:   c.Laddr.Port,
+				RemoteAddr:  c.Raddr.IP,
+				RemotePort:  c.Raddr.Port,
+				Status:      c.Status,
+			})
+		}
+	}
+
+	result := models.WSMessage{
+		Type: "net_list_result",
+		Payload: map[string]interface{}{
+			"request_id": nlPayload.RequestID,
+			"entries":    entries,
+			"error":      errMsg,
+		},
+	}
+	resultData, _ := json.Marshal(result)
+	if err := conn.WriteMessage(websocket.TextMessage, resultData); err != nil {
+		slog.Error("failed to send net list result", "error", err)
 	}
 }
 

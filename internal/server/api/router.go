@@ -70,6 +70,7 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine, serverVe
 		r.Post("/api/v1/agents/{id}/command", cmdHandler.Send)
 		r.Get("/api/v1/agents/{id}/commands", cmdHandler.List)
 		r.Get("/api/v1/agents/{id}/commands/{cmdID}", cmdHandler.Get)
+		r.Post("/api/v1/commands/bulk", cmdHandler.BulkSend)
 		r.Get("/api/v1/alerts", alertHandler.ListAlerts)
 		r.Get("/api/v1/alerts/rules", alertHandler.ListRules)
 		r.Post("/api/v1/alerts/rules", alertHandler.CreateRule)
@@ -85,6 +86,9 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine, serverVe
 		// Processes
 		r.Get("/api/v1/agents/{id}/processes", procHandler.List)
 		r.Post("/api/v1/agents/{id}/processes/{pid}/kill", procHandler.Kill)
+
+		// Network connections (netstat-style)
+		r.Get("/api/v1/agents/{id}/connections", procHandler.Connections)
 	})
 
 	// Static files

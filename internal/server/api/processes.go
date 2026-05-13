@@ -43,6 +43,32 @@ func (h *ProcessHandler) List(w http.ResponseWriter, r *http.Request) {
 	w.Write(result)
 }
 
+// Connections returns the network connections (netstat-style) from the agent via WebSocket
+func (h *ProcessHandler) Connections(w http.ResponseWriter, r *http.Request) {
+	agentID := chi.URLParam(r, "id")
+
+	agent, err := h.Store.GetAgent(agentID)
+	if err != nil || agent == nil {
+		http.Error(w, "agent not found", http.StatusNotFound)
+		return
+	}
+
+	if !h.Hub.IsConnected(agentID) {
+		http.Error(w, "agent not connected", http.StatusBadGateway)
+		return
+	}
+
+	result, err := h.Hub.ListConnections(agentID)
+	if err != nil {
+		slog.Warn("list connections failed", "agent_id", agentID, "error", err)
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(result)
+}
+
 // Kill terminates a process on the agent by PID
 func (h *ProcessHandler) Kill(w http.ResponseWriter, r *http.Request) {
 	agentID := chi.URLParam(r, "id")

@@ -24,6 +24,8 @@ Go ile yazılmış, agent-server mimarisinde mini bir Remote Monitoring and Mana
 - [x] Audit logging
 - [x] Process listesi (agent üzerindeki çalışan processleri görüntüleme)
 - [x] Process kill (uzaktan process sonlandırma, audit log ile)
+- [x] Network bağlantı izleme (netstat: TCP/UDP, local/remote addr, port, state, PID, process name)
+- [x] Bulk komut çalıştırma (birden fazla agent seç, preset/custom komut, canlı sonuç)
 
 ### Gelecek İyileştirmeler
 - [ ] Agent authentication (JWT/API key validation)

@@ -62,6 +62,20 @@ func (h *WebHandler) baseData() map[string]interface{} {
 	}
 }
 
+// serverURL derives the user-facing server URL from the incoming request.
+// Used to build install/update commands sent to remote agents.
+func serverURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	host := r.Host
+	if host == "" {
+		host = "localhost:8080"
+	}
+	return scheme + "://" + host
+}
+
 func mergeData(base, extra map[string]interface{}) map[string]interface{} {
 	for k, v := range extra {
 		base[k] = v
@@ -117,6 +131,7 @@ func (h *WebHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		"OnlineAgents":  online,
 		"OfflineAgents": offline,
 		"ActiveAlerts":  activeAlerts,
+		"ServerURL":     serverURL(r),
 	}))
 }
 
