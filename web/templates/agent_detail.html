@@ -73,12 +73,12 @@
     </div>
     <!-- Output area -->
     <div id="termHistory" style="font-family:'JetBrains Mono','Fira Code','Consolas',monospace;font-size:0.8rem;line-height:1.7;color:#cdd6f4;padding:1rem 1.2rem;min-height:180px;max-height:420px;overflow-y:auto;word-break:break-all">
-        <span style="color:#6c7086">-- Remote terminal ready. Type a command below. --</span>
+        <span style="color:#6c7086">-- Remote terminal ready ({{.Agent.OS}}){{if eq .Agent.OS "windows"}} · PowerShell{{else}} · sh{{end}} · type a command below --</span>
     </div>
     <!-- Input bar -->
     <div style="background:#0a0a0a;border-top:1px solid rgba(255,255,255,0.06);padding:0.55rem 1rem;display:flex;align-items:center;gap:0.6rem">
         <span style="color:#a6e3a1;font-family:monospace;font-size:0.82rem;white-space:nowrap">$</span>
-        <input type="text" id="cmdInput" placeholder="whoami, ipconfig /all, df -h..." autocomplete="off" autocorrect="off" spellcheck="false"
+        <input type="text" id="cmdInput" placeholder="{{if eq .Agent.OS "windows"}}whoami, ipconfig /all, Get-Process...{{else}}whoami, df -h, ps aux...{{end}}" autocomplete="off" autocorrect="off" spellcheck="false"
                style="flex:1;margin:0;background:transparent !important;border:none !important;box-shadow:none !important;padding:0 !important;font-family:'JetBrains Mono','Consolas',monospace !important;font-size:0.8rem !important;color:#cdd6f4 !important;outline:none !important">
         <button onclick="sendCommand()" id="cmdBtn" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3) !important;color:#a5b4fc;border-radius:6px !important;padding:0.3rem 0.8rem !important;font-size:0.75rem;white-space:nowrap;min-width:52px">Run</button>
     </div>
@@ -311,6 +311,14 @@ function clearTerminal() {
 async function sendCommand() {
     const cmd = cmdInput.value.trim();
     if (!cmd || cmdBtn.disabled) return;
+
+    // Handle clear client-side
+    if (cmd === 'clear' || cmd === 'cls') {
+        cmdInput.value = '';
+        cmdHistoryIdx = -1;
+        clearTerminal();
+        return;
+    }
 
     cmdHistoryList.unshift(cmd);
     cmdHistoryIdx = -1;

@@ -120,7 +120,8 @@ func (e *Executor) executeCommand(conn *websocket.Conn, payload interface{}) {
 	// Execute based on OS
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/C", cmdPayload.Command)
+		// PowerShell supports Unix aliases (ls, cat, pwd, clear, etc.)
+		cmd = exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", cmdPayload.Command)
 	} else {
 		cmd = exec.Command("sh", "-c", cmdPayload.Command)
 	}
