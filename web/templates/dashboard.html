@@ -49,7 +49,12 @@
             <td class="text-muted">{{.Agent.Hostname}}</td>
             <td class="text-muted">{{.Agent.OS}}</td>
             <td><code>{{.Agent.IP}}</code></td>
-            <td>v{{.Agent.Version}}</td>
+            <td>
+                <code style="font-size:0.78rem">v{{.Agent.Version}}</code>
+                {{if and (ne $.LatestAgentVersion "dev") (ne .Agent.Version $.LatestAgentVersion)}}
+                <span class="badge badge-warning" style="font-size:0.65rem;padding:0.15rem 0.5rem;margin-left:0.3rem">Update available</span>
+                {{end}}
+            </td>
             <td>
                 {{if eq (printf "%s" .Agent.Status) "online"}}
                 <span class="badge badge-online">Online</span>

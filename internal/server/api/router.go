@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Handler {
+func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine, serverVersion string) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
@@ -22,7 +22,7 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 	cmdHandler := &CommandHandler{Store: store, Hub: hub}
 	alertHandler := &AlertHandler{Store: store, Engine: alertEngine}
 	updateHandler := &update.Handler{}
-	webHandler := NewWebHandler(store, hub)
+	webHandler := NewWebHandler(store, hub, serverVersion)
 	authHandler := NewAuthHandler(store)
 	ftHandler := NewFileTransferHandler(store, hub, "uploads")
 	procHandler := &ProcessHandler{Store: store, Hub: hub}
@@ -69,6 +69,7 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 		r.Get("/api/v1/agents/{id}/metrics", agentHandler.Metrics)
 		r.Post("/api/v1/agents/{id}/command", cmdHandler.Send)
 		r.Get("/api/v1/agents/{id}/commands", cmdHandler.List)
+		r.Get("/api/v1/agents/{id}/commands/{cmdID}", cmdHandler.Get)
 		r.Get("/api/v1/alerts", alertHandler.ListAlerts)
 		r.Get("/api/v1/alerts/rules", alertHandler.ListRules)
 		r.Post("/api/v1/alerts/rules", alertHandler.CreateRule)

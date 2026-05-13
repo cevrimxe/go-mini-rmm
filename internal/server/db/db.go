@@ -163,6 +163,19 @@ func (s *Store) UpdateCommandResult(id int64, stdout, stderr string, exitCode in
 	return err
 }
 
+func (s *Store) GetCommand(id int64) (*models.Command, error) {
+	var c models.Command
+	err := s.db.QueryRow(`SELECT id, agent_id, command, stdout, stderr, exit_code, status, created_at FROM commands WHERE id=?`, id).
+		Scan(&c.ID, &c.AgentID, &c.Command, &c.Stdout, &c.Stderr, &c.ExitCode, &c.Status, &c.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
 func (s *Store) GetCommandsByAgent(agentID string, limit int) ([]models.Command, error) {
 	rows, err := s.db.Query(`SELECT id, agent_id, command, stdout, stderr, exit_code, status, created_at FROM commands WHERE agent_id=? ORDER BY created_at DESC LIMIT ?`, agentID, limit)
 	if err != nil {

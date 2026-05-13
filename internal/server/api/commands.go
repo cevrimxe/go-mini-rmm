@@ -74,6 +74,22 @@ func (h *CommandHandler) Send(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(cmd)
 }
 
+func (h *CommandHandler) Get(w http.ResponseWriter, r *http.Request) {
+	cmdIDStr := chi.URLParam(r, "cmdID")
+	cmdID, err := strconv.ParseInt(cmdIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid command id", http.StatusBadRequest)
+		return
+	}
+	cmd, err := h.Store.GetCommand(cmdID)
+	if err != nil || cmd == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cmd)
+}
+
 func (h *CommandHandler) List(w http.ResponseWriter, r *http.Request) {
 	agentID := chi.URLParam(r, "id")
 	limitStr := r.URL.Query().Get("limit")

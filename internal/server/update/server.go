@@ -10,11 +10,22 @@ import (
 	"github.com/cevrimxe/go-mini-rmm/web"
 )
 
-// LatestVersion can be set at build time or via config
+// LatestVersion is set at build time via ldflags. Can be overridden at runtime
+// with the RMM_AGENT_VERSION environment variable.
 var LatestVersion = "dev"
 
-// BinaryDir is the directory where agent binaries are stored for download
+// BinaryDir is the directory where agent binaries are stored for download.
+// Can be overridden with the RMM_BINARY_DIR environment variable.
 var BinaryDir = "./binaries"
+
+func init() {
+	if v := os.Getenv("RMM_AGENT_VERSION"); v != "" {
+		LatestVersion = v
+	}
+	if d := os.Getenv("RMM_BINARY_DIR"); d != "" {
+		BinaryDir = d
+	}
+}
 
 type UpdateCheckResponse struct {
 	UpdateAvailable bool   `json:"update_available"`

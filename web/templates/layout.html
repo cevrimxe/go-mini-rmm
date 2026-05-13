@@ -309,6 +309,8 @@
             color: var(--text-muted);
         }
 
+        @keyframes termBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
         /* ---- TERMINAL ---- */
         .terminal-output {
             background: #000000;
@@ -458,6 +460,6 @@
     <main class="container" style="margin-top:1.5rem; max-width:1800px; padding:0 1.5rem;">
         {{template "content" .}}
     </main>
-    <footer>Go Mini RMM</footer>
+    <footer>Go Mini RMM &middot; Server <code style="font-size:0.72rem;background:rgba(255,255,255,0.05);padding:0.1rem 0.35rem;border-radius:4px">v{{.ServerVersion}}</code></footer>
 </body>
 </html>

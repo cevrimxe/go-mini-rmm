@@ -16,6 +16,8 @@ import (
 	"github.com/cevrimxe/go-mini-rmm/internal/server/ws"
 )
 
+var Version = "dev"
+
 func main() {
 	addr := flag.String("addr", ":8080", "Server listen address")
 	dbPath := flag.String("db", "rmm.db", "SQLite database path")
@@ -41,7 +43,7 @@ func main() {
 	go alertEngine.Run(context.Background())
 
 	// Router
-	router := api.NewRouter(store, hub, alertEngine)
+	router := api.NewRouter(store, hub, alertEngine, Version)
 
 	srv := &http.Server{
 		Addr:         *addr,

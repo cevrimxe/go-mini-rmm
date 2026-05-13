@@ -1,20 +1,24 @@
 FROM golang:1.25-alpine AS builder
 
+ARG VERSION=dev
+
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-# Build server
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /server ./cmd/server
+# Build server (version embedded so /api/v1/update/check returns the right LatestVersion)
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-s -w -X main.Version=${VERSION} -X github.com/cevrimxe/go-mini-rmm/internal/server/update.LatestVersion=${VERSION}" \
+    -o /server ./cmd/server
 
-# Build agent binaries for all platforms
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-linux-amd64 ./cmd/agent
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-linux-arm64 ./cmd/agent
-RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-windows-amd64.exe ./cmd/agent
-RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-darwin-amd64 ./cmd/agent
-RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.Version=1.0.0" -o /binaries/agent-darwin-arm64 ./cmd/agent
+# Build agent binaries for all platforms (same version tag)
+RUN CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /binaries/agent-linux-amd64 ./cmd/agent
+RUN CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /binaries/agent-linux-arm64 ./cmd/agent
+RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /binaries/agent-windows-amd64.exe ./cmd/agent
+RUN CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /binaries/agent-darwin-amd64 ./cmd/agent
+RUN CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /binaries/agent-darwin-arm64 ./cmd/agent
 
 FROM alpine:3.19
 LABEL org.opencontainers.image.source="https://github.com/cevrimxe/go-mini-rmm"

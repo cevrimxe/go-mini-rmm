@@ -12,7 +12,7 @@ Go ile yazılmış, agent-server mimarisinde mini bir Remote Monitoring and Mana
 - [x] Agent: Sistem bilgisi collector (CPU, RAM, Disk, Host)
 - [x] Agent: Periyodik heartbeat (30s)
 - [x] Agent: Uzaktan komut çalıştırma (WebSocket)
-- [x] Agent: Auto-update mekanizması
+- [x] Agent: Auto-update mekanizması (her 5dk kontrol, binary indir, self-restart)
 - [x] Server: REST API (heartbeat, agent CRUD, komut, alert)
 - [x] Server: WebSocket hub (gerçek zamanlı komut iletimi)
 - [x] Server: Alert engine (kural tabanlı + offline algılama)

@@ -13,7 +13,12 @@
         {{end}}
     </h2>
     <p style="margin:0.3rem 0 0 0;color:var(--dim);font-size:0.82rem">
-        Key: <code>{{.Agent.ID}}</code> &middot; {{.Agent.Hostname}} &middot; {{.Agent.OS}} &middot; {{.Agent.IP}} &middot; v{{.Agent.Version}} &middot; Last seen {{timeAgo .Agent.LastHeartbeat}}
+        Key: <code>{{.Agent.ID}}</code> &middot; {{.Agent.Hostname}} &middot; {{.Agent.OS}} &middot; {{.Agent.IP}} &middot;
+        <code>v{{.Agent.Version}}</code>
+        {{if and (ne .LatestAgentVersion "dev") (ne .Agent.Version .LatestAgentVersion)}}
+        <span class="badge badge-warning" style="font-size:0.65rem;vertical-align:middle">Update available → v{{.LatestAgentVersion}}</span>
+        {{end}}
+        &middot; Last seen {{timeAgo .Agent.LastHeartbeat}}
     </p>
     <p style="margin:0.5rem 0 0 0">
         <button type="button" class="btn btn-outline btn-sm" style="color:var(--red);border-color:rgba(239, 68, 68, 0.3)" onclick="removeAgent('{{.Agent.ID}}')">Remove agent</button>
@@ -50,16 +55,34 @@
     </div>
 </div>
 
-<div class="section-header">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-    Remote Terminal
+<div class="section-header" style="display:flex;align-items:center;justify-content:space-between">
+    <span style="display:flex;align-items:center;gap:0.5rem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Remote Terminal
+    </span>
+    <button type="button" class="btn btn-outline btn-sm" onclick="clearTerminal()" style="margin:0;font-size:0.72rem">Clear</button>
 </div>
 
-<div style="display:flex;gap:0.5rem;margin-bottom:0.8rem">
-    <input type="text" id="cmdInput" placeholder="Enter command... (whoami, df -h, ipconfig /all)" style="flex:1;margin:0">
-    <button onclick="sendCommand()" class="btn-accent" id="cmdBtn" style="margin:0;white-space:nowrap">Run</button>
+<div style="background:#000;border-radius:12px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.4)">
+    <!-- Traffic lights bar -->
+    <div style="background:#111;padding:0.55rem 1rem;display:flex;align-items:center;gap:0.4rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <span style="width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block"></span>
+        <span style="width:10px;height:10px;border-radius:50%;background:#febc2e;display:inline-block"></span>
+        <span style="width:10px;height:10px;border-radius:50%;background:#28c840;display:inline-block"></span>
+        <span style="margin-left:0.6rem;font-size:0.72rem;color:#555;font-family:monospace">{{.Agent.Hostname}}</span>
+    </div>
+    <!-- Output area -->
+    <div id="termHistory" style="font-family:'JetBrains Mono','Fira Code','Consolas',monospace;font-size:0.8rem;line-height:1.7;color:#cdd6f4;padding:1rem 1.2rem;min-height:180px;max-height:420px;overflow-y:auto;word-break:break-all">
+        <span style="color:#6c7086">-- Remote terminal ready. Type a command below. --</span>
+    </div>
+    <!-- Input bar -->
+    <div style="background:#0a0a0a;border-top:1px solid rgba(255,255,255,0.06);padding:0.55rem 1rem;display:flex;align-items:center;gap:0.6rem">
+        <span style="color:#a6e3a1;font-family:monospace;font-size:0.82rem;white-space:nowrap">$</span>
+        <input type="text" id="cmdInput" placeholder="whoami, ipconfig /all, df -h..." autocomplete="off" autocorrect="off" spellcheck="false"
+               style="flex:1;margin:0;background:transparent !important;border:none !important;box-shadow:none !important;padding:0 !important;font-family:'JetBrains Mono','Consolas',monospace !important;font-size:0.8rem !important;color:#cdd6f4 !important;outline:none !important">
+        <button onclick="sendCommand()" id="cmdBtn" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3) !important;color:#a5b4fc;border-radius:6px !important;padding:0.3rem 0.8rem !important;font-size:0.75rem;white-space:nowrap;min-width:52px">Run</button>
+    </div>
 </div>
-<div id="cmdOutput" class="terminal-output" style="display:none"></div>
 
 <div class="section-header">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -245,49 +268,136 @@
 const agentID = "{{.Agent.ID}}";
 const cmdInput = document.getElementById('cmdInput');
 const cmdBtn = document.getElementById('cmdBtn');
-const cmdOutput = document.getElementById('cmdOutput');
+const termHistory = document.getElementById('termHistory');
 
-cmdInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendCommand(); });
+// Command history for up/down arrows
+var cmdHistoryList = [];
+var cmdHistoryIdx = -1;
+
+cmdInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { sendCommand(); return; }
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (cmdHistoryIdx < cmdHistoryList.length - 1) {
+            cmdHistoryIdx++;
+            cmdInput.value = cmdHistoryList[cmdHistoryIdx];
+        }
+    }
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (cmdHistoryIdx > 0) {
+            cmdHistoryIdx--;
+            cmdInput.value = cmdHistoryList[cmdHistoryIdx];
+        } else {
+            cmdHistoryIdx = -1;
+            cmdInput.value = '';
+        }
+    }
+});
+
+function termAppend(html) {
+    termHistory.innerHTML += html;
+    termHistory.scrollTop = termHistory.scrollHeight;
+}
+
+function termPromptLine(cmd) {
+    return '<div><span style="color:#a6e3a1">$ </span><span style="color:#cdd6f4">' + esc(cmd) + '</span></div>';
+}
+
+function clearTerminal() {
+    termHistory.innerHTML = '<span style="color:#6c7086">-- Terminal cleared. --</span>';
+}
 
 async function sendCommand() {
     const cmd = cmdInput.value.trim();
-    if (!cmd) return;
-    cmdOutput.style.display = 'block';
-    cmdOutput.textContent = '$ ' + cmd + '\n';
+    if (!cmd || cmdBtn.disabled) return;
+
+    cmdHistoryList.unshift(cmd);
+    cmdHistoryIdx = -1;
+    cmdInput.value = '';
+
+    termAppend(termPromptLine(cmd));
+    var loadingEl = document.createElement('div');
+    loadingEl.id = 'termLoading';
+    loadingEl.style.color = '#6c7086';
+    loadingEl.innerHTML = '<span style="animation:termBlink 1s infinite">▋</span> Running...';
+    termHistory.appendChild(loadingEl);
+    termHistory.scrollTop = termHistory.scrollHeight;
+
     cmdBtn.disabled = true;
-    cmdBtn.textContent = 'Running...';
+    cmdBtn.textContent = '...';
+
     try {
         const resp = await fetch('/api/v1/agents/' + agentID + '/command', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({command: cmd})
         });
+        if (!resp.ok) {
+            var errText = await resp.text();
+            removeLoading();
+            termAppend('<div style="color:#f38ba8">Error: ' + esc(errText) + '</div>');
+            termDone();
+            return;
+        }
         const data = await resp.json();
         let attempts = 0;
         const poll = setInterval(async () => {
             attempts++;
-            const cmdResp = await fetch('/api/v1/agents/' + agentID + '/commands?limit=1');
-            const cmds = await cmdResp.json();
-            if (cmds.length > 0 && cmds[0].id === data.id && cmds[0].status !== 'pending') {
+            try {
+                const cmdResp = await fetch('/api/v1/agents/' + agentID + '/commands/' + data.id);
+                if (cmdResp.ok) {
+                    const c = await cmdResp.json();
+                    if (c.status !== 'pending' && c.status !== 'running') {
+                        clearInterval(poll);
+                        removeLoading();
+                        renderOutput(c);
+                        termDone();
+                    }
+                }
+            } catch(e) {}
+            if (attempts > 60) {
                 clearInterval(poll);
-                cmdOutput.textContent = '$ ' + cmd + '\n' + cmds[0].stdout;
-                if (cmds[0].stderr) cmdOutput.textContent += '\n--- stderr ---\n' + cmds[0].stderr;
-                cmdOutput.textContent += '\n[exit: ' + cmds[0].exit_code + ']';
-                done();
+                removeLoading();
+                termAppend('<div style="color:#f38ba8">[timeout waiting for result]</div>');
+                termDone();
             }
-            if (attempts > 30) { clearInterval(poll); cmdOutput.textContent += '\n[timeout]'; done(); }
-        }, 1000);
+        }, 500);
     } catch(err) {
-        cmdOutput.textContent += 'Error: ' + err.message;
-        done();
+        removeLoading();
+        termAppend('<div style="color:#f38ba8">Error: ' + esc(err.message) + '</div>');
+        termDone();
     }
 }
-function done() { cmdBtn.disabled = false; cmdBtn.textContent = 'Run'; cmdInput.value = ''; cmdInput.focus(); }
-function showOutput(stdout, stderr, cmd) {
-    cmdOutput.style.display = 'block';
-    cmdOutput.textContent = '$ ' + cmd + '\n' + (stdout || '(no output)');
-    if (stderr) cmdOutput.textContent += '\n--- stderr ---\n' + stderr;
+
+function removeLoading() {
+    var el = document.getElementById('termLoading');
+    if (el) el.remove();
 }
+
+function renderOutput(c) {
+    var html = '';
+    if (c.stdout) {
+        html += '<div style="color:#cdd6f4;white-space:pre-wrap">' + esc(c.stdout) + '</div>';
+    }
+    if (c.stderr) {
+        html += '<div style="color:#f38ba8;white-space:pre-wrap">' + esc(c.stderr) + '</div>';
+    }
+    if (!c.stdout && !c.stderr) {
+        html += '<div style="color:#6c7086">(no output)</div>';
+    }
+    var exitColor = c.exit_code === 0 ? '#a6e3a1' : '#f38ba8';
+    html += '<div style="color:' + exitColor + ';font-size:0.72rem;margin-top:0.2rem">[exit: ' + c.exit_code + ']</div>';
+    termAppend(html);
+}
+
+function termDone() { cmdBtn.disabled = false; cmdBtn.textContent = 'Run'; cmdInput.focus(); }
+
+function showOutput(stdout, stderr, cmd) {
+    termAppend(termPromptLine(cmd));
+    renderOutput({stdout: stdout, stderr: stderr, exit_code: 0});
+}
+
 function removeAgent(key) {
     var expected = 'delete ' + key;
     var msg = 'Remove this agent permanently? Type exactly:\n\n' + expected;

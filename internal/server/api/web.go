@@ -10,15 +10,17 @@ import (
 
 	"github.com/cevrimxe/go-mini-rmm/internal/models"
 	"github.com/cevrimxe/go-mini-rmm/internal/server/db"
+	"github.com/cevrimxe/go-mini-rmm/internal/server/update"
 	"github.com/cevrimxe/go-mini-rmm/internal/server/ws"
 	"github.com/cevrimxe/go-mini-rmm/web"
 	"github.com/go-chi/chi/v5"
 )
 
 type WebHandler struct {
-	store     *db.Store
-	hub       *ws.Hub
-	templates map[string]*template.Template
+	store         *db.Store
+	hub           *ws.Hub
+	templates     map[string]*template.Template
+	serverVersion string
 }
 
 type agentRow struct {
@@ -42,7 +44,7 @@ func parseTemplate(name string) *template.Template {
 	)
 }
 
-func NewWebHandler(store *db.Store, hub *ws.Hub) *WebHandler {
+func NewWebHandler(store *db.Store, hub *ws.Hub, serverVersion string) *WebHandler {
 	templates := map[string]*template.Template{
 		"dashboard":    parseTemplate("dashboard.html"),
 		"agent_detail": parseTemplate("agent_detail.html"),
@@ -50,7 +52,21 @@ func NewWebHandler(store *db.Store, hub *ws.Hub) *WebHandler {
 		"audit_logs":   parseTemplate("audit_logs.html"),
 	}
 
-	return &WebHandler{store: store, hub: hub, templates: templates}
+	return &WebHandler{store: store, hub: hub, templates: templates, serverVersion: serverVersion}
+}
+
+func (h *WebHandler) baseData() map[string]interface{} {
+	return map[string]interface{}{
+		"ServerVersion":      h.serverVersion,
+		"LatestAgentVersion": update.LatestVersion,
+	}
+}
+
+func mergeData(base, extra map[string]interface{}) map[string]interface{} {
+	for k, v := range extra {
+		base[k] = v
+	}
+	return base
 }
 
 func (h *WebHandler) render(w http.ResponseWriter, name string, data map[string]interface{}) {
@@ -94,14 +110,14 @@ func (h *WebHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.render(w, "dashboard", map[string]interface{}{
+	h.render(w, "dashboard", mergeData(h.baseData(), map[string]interface{}{
 		"Title":         "Dashboard",
 		"Agents":        rows,
 		"TotalAgents":   len(agents),
 		"OnlineAgents":  online,
 		"OfflineAgents": offline,
 		"ActiveAlerts":  activeAlerts,
-	})
+	}))
 }
 
 func (h *WebHandler) AgentDetail(w http.ResponseWriter, r *http.Request) {
@@ -123,13 +139,13 @@ func (h *WebHandler) AgentDetail(w http.ResponseWriter, r *http.Request) {
 		transfers = []models.FileTransfer{}
 	}
 
-	h.render(w, "agent_detail", map[string]interface{}{
+	h.render(w, "agent_detail", mergeData(h.baseData(), map[string]interface{}{
 		"Title":         agent.Hostname,
 		"Agent":         agent,
 		"Metric":        metric,
 		"Commands":      commands,
 		"FileTransfers": transfers,
-	})
+	}))
 }
 
 func (h *WebHandler) Alerts(w http.ResponseWriter, r *http.Request) {
@@ -148,12 +164,12 @@ func (h *WebHandler) Alerts(w http.ResponseWriter, r *http.Request) {
 		agents = []models.Agent{}
 	}
 
-	h.render(w, "alerts", map[string]interface{}{
+	h.render(w, "alerts", mergeData(h.baseData(), map[string]interface{}{
 		"Title":  "Alerts",
 		"Alerts": alerts,
 		"Rules":  rules,
 		"Agents": agents,
-	})
+	}))
 }
 
 func (h *WebHandler) AuditLogs(w http.ResponseWriter, r *http.Request) {
@@ -162,10 +178,10 @@ func (h *WebHandler) AuditLogs(w http.ResponseWriter, r *http.Request) {
 		logs = []models.AuditLog{}
 	}
 
-	h.render(w, "audit_logs", map[string]interface{}{
+	h.render(w, "audit_logs", mergeData(h.baseData(), map[string]interface{}{
 		"Title": "Audit Logs",
 		"Logs":  logs,
-	})
+	}))
 }
 
 // fileServer serves static files embedded in the binary

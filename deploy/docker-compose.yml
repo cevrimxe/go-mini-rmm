@@ -1,21 +1,32 @@
 version: "3.8"
 
+# Set VERSION in a .env file or export VERSION=1.2.0 before running docker compose.
+# The server will advertise this version to agents via /api/v1/update/check.
+# Agents with an older version will auto-download and restart.
+
 services:
   server:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.server
+      args:
+        VERSION: ${VERSION:-dev}
     container_name: rmm-server
     ports:
       - "8080:8080"
     volumes:
       - rmm-data:/app/data
+    environment:
+      # Runtime override (takes precedence over ldflags value)
+      - RMM_AGENT_VERSION=${VERSION:-dev}
     restart: unless-stopped
 
   agent-1:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.agent
+      args:
+        VERSION: ${VERSION:-dev}
     container_name: rmm-agent-1
     command: ["-server", "http://server:8080", "-key", "agent-1"]
     depends_on:
@@ -26,6 +37,8 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.agent
+      args:
+        VERSION: ${VERSION:-dev}
     container_name: rmm-agent-2
     command: ["-server", "http://server:8080", "-key", "agent-2"]
     depends_on:
