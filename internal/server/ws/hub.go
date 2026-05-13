@@ -36,6 +36,10 @@ type Hub struct {
 	// Process listing request-response
 	processRequests   map[string]chan json.RawMessage
 	processRequestsMu sync.Mutex
+
+	// Process kill request-response
+	killRequests   map[string]chan json.RawMessage
+	killRequestsMu sync.Mutex
 }
 
 func NewHub(store *db.Store) *Hub {
@@ -46,6 +50,7 @@ func NewHub(store *db.Store) *Hub {
 		unregister:      make(chan string),
 		dirRequests:     make(map[string]chan json.RawMessage),
 		processRequests: make(map[string]chan json.RawMessage),
+		killRequests:    make(map[string]chan json.RawMessage),
 	}
 }
 
@@ -120,6 +125,8 @@ func (h *Hub) readPump(conn *websocket.Conn, agentID string) {
 			h.handleDirListResult(message)
 		case "process_list_result":
 			h.handleProcessListResult(message)
+		case "process_kill_result":
+			h.handleProcessKillResult(message)
 		default:
 			slog.Debug("ws unknown message type", "type", msg.Type)
 		}
@@ -253,6 +260,67 @@ func (h *Hub) ListProcesses(agentID string) (json.RawMessage, error) {
 		return result, nil
 	case <-time.After(15 * time.Second):
 		return nil, fmt.Errorf("timeout waiting for process listing")
+	}
+}
+
+func (h *Hub) handleProcessKillResult(rawMessage []byte) {
+	var envelope struct {
+		Payload struct {
+			RequestID string `json:"request_id"`
+		} `json:"payload"`
+	}
+	if err := json.Unmarshal(rawMessage, &envelope); err != nil {
+		slog.Warn("invalid process_kill_result", "error", err)
+		return
+	}
+
+	h.killRequestsMu.Lock()
+	ch, ok := h.killRequests[envelope.Payload.RequestID]
+	if ok {
+		delete(h.killRequests, envelope.Payload.RequestID)
+	}
+	h.killRequestsMu.Unlock()
+
+	if ok {
+		var msg struct {
+			Payload json.RawMessage `json:"payload"`
+		}
+		json.Unmarshal(rawMessage, &msg)
+		ch <- msg.Payload
+	}
+}
+
+// KillProcess sends a process_kill command to an agent and waits for the response
+func (h *Hub) KillProcess(agentID string, pid int32) (json.RawMessage, error) {
+	requestID := fmt.Sprintf("kill_%d", time.Now().UnixNano())
+
+	ch := make(chan json.RawMessage, 1)
+	h.killRequestsMu.Lock()
+	h.killRequests[requestID] = ch
+	h.killRequestsMu.Unlock()
+
+	defer func() {
+		h.killRequestsMu.Lock()
+		delete(h.killRequests, requestID)
+		h.killRequestsMu.Unlock()
+	}()
+
+	msg := models.WSMessage{
+		Type: "process_kill",
+		Payload: map[string]interface{}{
+			"request_id": requestID,
+			"pid":        pid,
+		},
+	}
+	if err := h.SendToAgent(agentID, msg); err != nil {
+		return nil, err
+	}
+
+	select {
+	case result := <-ch:
+		return result, nil
+	case <-time.After(10 * time.Second):
+		return nil, fmt.Errorf("timeout waiting for kill result")
 	}
 }
 

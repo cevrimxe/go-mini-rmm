@@ -190,10 +190,11 @@
             <th style="cursor:pointer" onclick="sortProcesses('cpu_percent')">CPU %</th>
             <th style="cursor:pointer" onclick="sortProcesses('memory_mb')">Memory</th>
             <th>Status</th>
+            <th></th>
         </tr>
     </thead>
     <tbody id="procTbody">
-        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--dim)">Click "Refresh" to load running processes.</td></tr>
+        <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--dim)">Click "Refresh" to load running processes.</td></tr>
     </tbody>
 </table>
 </div>
@@ -530,7 +531,7 @@ async function loadProcesses() {
         var resp = await fetch('/api/v1/agents/' + agentID + '/processes');
         if (!resp.ok) {
             var errText = await resp.text();
-            document.getElementById('procTbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--red)">Error: ' + esc(errText) + '</td></tr>';
+            document.getElementById('procTbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--red)">Error: ' + esc(errText) + '</td></tr>';
             return;
         }
         var data = await resp.json();
@@ -541,10 +542,31 @@ async function loadProcesses() {
         renderProcesses();
         showProcStatus('Loaded ' + procData.length + ' processes', false);
     } catch(err) {
-        document.getElementById('procTbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--red)">Error: ' + esc(err.message) + '</td></tr>';
+        document.getElementById('procTbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--red)">Error: ' + esc(err.message) + '</td></tr>';
     }
     btn.disabled = false;
     btn.textContent = 'Refresh';
+}
+
+async function killProcess(pid, name) {
+    if (!confirm('Kill process "' + name + '" (PID ' + pid + ')?\n\nThis cannot be undone.')) return;
+
+    try {
+        var resp = await fetch('/api/v1/agents/' + agentID + '/processes/' + pid + '/kill', {
+            method: 'POST'
+        });
+        var data = {};
+        try { data = await resp.json(); } catch(e) {}
+        if (resp.ok && data.success) {
+            showProcStatus('Killed process ' + (data.name || name) + ' (PID ' + pid + ')', false);
+            procData = procData.filter(function(p) { return p.pid !== pid; });
+            renderProcesses();
+        } else {
+            showProcStatus('Kill failed: ' + (data.error || resp.statusText), true);
+        }
+    } catch(err) {
+        showProcStatus('Kill error: ' + err.message, true);
+    }
 }
 
 function sortProcesses(key) {
@@ -570,7 +592,7 @@ function renderProcesses() {
     });
 
     if (list.length === 0) {
-        document.getElementById('procTbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--dim)">No processes match.</td></tr>';
+        document.getElementById('procTbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--dim)">No processes match.</td></tr>';
         return;
     }
 
@@ -579,17 +601,20 @@ function renderProcesses() {
         var cpu = (p.cpu_percent || 0).toFixed(1);
         var mem = (p.memory_mb || 0).toFixed(1);
         var cpuColor = p.cpu_percent >= 50 ? 'var(--red)' : (p.cpu_percent >= 20 ? 'var(--yellow)' : 'var(--muted)');
+        var safeName = esc(p.name || '');
+        var jsName = escJs(p.name || '');
         html += '<tr>';
         html += '<td><code>' + p.pid + '</code></td>';
-        html += '<td><code>' + esc(p.name || '') + '</code></td>';
+        html += '<td><code>' + safeName + '</code></td>';
         html += '<td class="text-muted text-sm">' + esc(p.username || '') + '</td>';
         html += '<td style="color:' + cpuColor + '">' + cpu + '%</td>';
         html += '<td class="text-muted text-sm">' + mem + ' MB</td>';
         html += '<td class="text-muted text-sm">' + esc(p.status || '') + '</td>';
+        html += '<td><button class="btn btn-outline btn-sm" style="color:var(--red);border-color:rgba(239,68,68,0.3);padding:0.2rem 0.5rem;font-size:0.7rem" onclick="killProcess(' + p.pid + ', \'' + jsName + '\')">Kill</button></td>';
         html += '</tr>';
     });
     if (list.length > 500) {
-        html += '<tr><td colspan="6" style="text-align:center;padding:0.5rem;color:var(--dim);font-size:0.75rem">Showing 500 of ' + list.length + '. Use filter to narrow down.</td></tr>';
+        html += '<tr><td colspan="7" style="text-align:center;padding:0.5rem;color:var(--dim);font-size:0.75rem">Showing 500 of ' + list.length + '. Use filter to narrow down.</td></tr>';
     }
     document.getElementById('procTbody').innerHTML = html;
 }

@@ -94,6 +94,8 @@ func (e *Executor) connectAndListen(ctx context.Context) {
 			go e.handleDirList(conn, msg.Payload)
 		case "process_list":
 			go e.handleProcessList(conn, msg.Payload)
+		case "process_kill":
+			go e.handleProcessKill(conn, msg.Payload)
 		}
 	}
 }
@@ -449,6 +451,60 @@ func (e *Executor) handleProcessList(conn *websocket.Conn, payload interface{}) 
 	resultData, _ := json.Marshal(result)
 	if err := conn.WriteMessage(websocket.TextMessage, resultData); err != nil {
 		slog.Error("failed to send process list result", "error", err)
+	}
+}
+
+// handleProcessKill terminates a process by PID and sends result back via WS
+func (e *Executor) handleProcessKill(conn *websocket.Conn, payload interface{}) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	var pkPayload struct {
+		RequestID string `json:"request_id"`
+		PID       int32  `json:"pid"`
+	}
+	if err := json.Unmarshal(data, &pkPayload); err != nil {
+		slog.Warn("invalid process_kill payload", "error", err)
+		return
+	}
+
+	success := true
+	errMsg := ""
+	procName := ""
+
+	p, err := process.NewProcess(pkPayload.PID)
+	if err != nil {
+		success = false
+		errMsg = fmt.Sprintf("process not found: %v", err)
+	} else {
+		procName, _ = p.Name()
+		if err := p.Kill(); err != nil {
+			success = false
+			errMsg = fmt.Sprintf("kill failed: %v", err)
+		}
+	}
+
+	if success {
+		slog.Info("process killed", "pid", pkPayload.PID, "name", procName)
+	} else {
+		slog.Warn("process kill failed", "pid", pkPayload.PID, "error", errMsg)
+	}
+
+	result := models.WSMessage{
+		Type: "process_kill_result",
+		Payload: map[string]interface{}{
+			"request_id": pkPayload.RequestID,
+			"pid":        pkPayload.PID,
+			"name":       procName,
+			"success":    success,
+			"error":      errMsg,
+		},
+	}
+	resultData, _ := json.Marshal(result)
+	if err := conn.WriteMessage(websocket.TextMessage, resultData); err != nil {
+		slog.Error("failed to send process kill result", "error", err)
 	}
 }
 

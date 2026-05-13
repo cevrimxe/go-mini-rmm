@@ -23,6 +23,7 @@ Go ile yazılmış, agent-server mimarisinde mini bir Remote Monitoring and Mana
 - [x] Cross-compile build script
 - [x] Audit logging
 - [x] Process listesi (agent üzerindeki çalışan processleri görüntüleme)
+- [x] Process kill (uzaktan process sonlandırma, audit log ile)
 
 ### Gelecek İyileştirmeler
 - [ ] Agent authentication (JWT/API key validation)

@@ -83,6 +83,7 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 
 		// Processes
 		r.Get("/api/v1/agents/{id}/processes", procHandler.List)
+		r.Post("/api/v1/agents/{id}/processes/{pid}/kill", procHandler.Kill)
 	})
 
 	// Static files
