@@ -106,7 +106,7 @@
 </div>
 
 <!-- Bulk action floating bar -->
-<div id="bulkBar" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid rgba(99,102,241,0.4);border-radius:12px;padding:0.7rem 1.2rem;box-shadow:0 12px 32px rgba(0,0,0,0.5);z-index:90;display:flex;align-items:center;gap:1rem">
+<div id="bulkBar" style="display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid rgba(99,102,241,0.4);border-radius:12px;padding:0.7rem 1.2rem;box-shadow:0 12px 32px rgba(0,0,0,0.5);z-index:90;align-items:center;gap:1rem">
     <span style="font-size:0.85rem;color:var(--text-main)"><strong id="bulkCount">0</strong> agent selected</span>
     <span style="font-size:0.75rem;color:var(--dim);font-family:monospace" id="bulkOSInfo"></span>
     <button class="btn btn-outline btn-sm" onclick="clearSelection()">Clear</button>
@@ -184,6 +184,7 @@ function updateSelection() {
     document.getElementById('bulkCount').textContent = checked.length;
     if (checked.length > 0) {
         bar.style.display = 'flex';
+        bar.style.alignItems = 'center';
         // OS summary
         var osSet = new Set();
         checked.forEach(function(cb) { osSet.add((cb.dataset.os || '').toLowerCase().indexOf('windows') >= 0 ? 'windows' : 'unix'); });
