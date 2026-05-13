@@ -22,6 +22,7 @@ Go ile yazılmış, agent-server mimarisinde mini bir Remote Monitoring and Mana
 - [x] Multi-stage Dockerfile'lar (server + agent)
 - [x] Cross-compile build script
 - [x] Audit logging
+- [x] Process listesi (agent üzerindeki çalışan processleri görüntüleme)
 
 ### Gelecek İyileştirmeler
 - [ ] Agent authentication (JWT/API key validation)

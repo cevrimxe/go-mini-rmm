@@ -19,6 +19,7 @@ import (
 
 	"github.com/cevrimxe/go-mini-rmm/internal/models"
 	"github.com/gorilla/websocket"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 type Executor struct {
@@ -91,6 +92,8 @@ func (e *Executor) connectAndListen(ctx context.Context) {
 			go e.handleFileUpload(conn, msg.Payload)
 		case "dir_list":
 			go e.handleDirList(conn, msg.Payload)
+		case "process_list":
+			go e.handleProcessList(conn, msg.Payload)
 		}
 	}
 }
@@ -372,6 +375,80 @@ func (e *Executor) handleDirList(conn *websocket.Conn, payload interface{}) {
 	resultData, _ := json.Marshal(result)
 	if err := conn.WriteMessage(websocket.TextMessage, resultData); err != nil {
 		slog.Error("failed to send dir list result", "error", err)
+	}
+}
+
+// handleProcessList collects running processes via gopsutil and sends them back via WS
+func (e *Executor) handleProcessList(conn *websocket.Conn, payload interface{}) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	var plPayload struct {
+		RequestID string `json:"request_id"`
+	}
+	if err := json.Unmarshal(data, &plPayload); err != nil {
+		slog.Warn("invalid process_list payload", "error", err)
+		return
+	}
+
+	type processEntry struct {
+		PID        int32   `json:"pid"`
+		Name       string  `json:"name"`
+		CPUPercent float64 `json:"cpu_percent"`
+		MemoryMB   float64 `json:"memory_mb"`
+		Status     string  `json:"status"`
+		Username   string  `json:"username"`
+	}
+
+	var entries []processEntry
+	errMsg := ""
+
+	procs, err := process.Processes()
+	if err != nil {
+		errMsg = err.Error()
+	} else {
+		for _, p := range procs {
+			name, nerr := p.Name()
+			if nerr != nil {
+				continue
+			}
+			cpuPct, _ := p.CPUPercent()
+			memInfo, _ := p.MemoryInfo()
+			var memMB float64
+			if memInfo != nil {
+				memMB = float64(memInfo.RSS) / 1024.0 / 1024.0
+			}
+			statuses, _ := p.Status()
+			status := ""
+			if len(statuses) > 0 {
+				status = statuses[0]
+			}
+			username, _ := p.Username()
+
+			entries = append(entries, processEntry{
+				PID:        p.Pid,
+				Name:       name,
+				CPUPercent: cpuPct,
+				MemoryMB:   memMB,
+				Status:     status,
+				Username:   username,
+			})
+		}
+	}
+
+	result := models.WSMessage{
+		Type: "process_list_result",
+		Payload: map[string]interface{}{
+			"request_id": plPayload.RequestID,
+			"entries":    entries,
+			"error":      errMsg,
+		},
+	}
+	resultData, _ := json.Marshal(result)
+	if err := conn.WriteMessage(websocket.TextMessage, resultData); err != nil {
+		slog.Error("failed to send process list result", "error", err)
 	}
 }
 

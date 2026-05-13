@@ -25,6 +25,7 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 	webHandler := NewWebHandler(store, hub)
 	authHandler := NewAuthHandler(store)
 	ftHandler := NewFileTransferHandler(store, hub, "uploads")
+	procHandler := &ProcessHandler{Store: store, Hub: hub}
 
 	// ── Public routes (no auth) ──
 	r.Get("/login", authHandler.LoginPage)
@@ -79,6 +80,9 @@ func NewRouter(store *db.Store, hub *ws.Hub, alertEngine *alert.Engine) http.Han
 		r.Get("/api/v1/agents/{id}/files", ftHandler.List)
 		r.Get("/api/v1/agents/{id}/browse", ftHandler.Browse)
 		r.Get("/api/v1/files/{transferID}/download", ftHandler.DownloadFile)
+
+		// Processes
+		r.Get("/api/v1/agents/{id}/processes", procHandler.List)
 	})
 
 	// Static files

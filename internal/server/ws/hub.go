@@ -32,15 +32,20 @@ type Hub struct {
 	// Directory listing request-response
 	dirRequests   map[string]chan json.RawMessage
 	dirRequestsMu sync.Mutex
+
+	// Process listing request-response
+	processRequests   map[string]chan json.RawMessage
+	processRequestsMu sync.Mutex
 }
 
 func NewHub(store *db.Store) *Hub {
 	return &Hub{
-		store:       store,
-		agents:      make(map[string]*websocket.Conn),
-		register:    make(chan *agentConn),
-		unregister:  make(chan string),
-		dirRequests: make(map[string]chan json.RawMessage),
+		store:           store,
+		agents:          make(map[string]*websocket.Conn),
+		register:        make(chan *agentConn),
+		unregister:      make(chan string),
+		dirRequests:     make(map[string]chan json.RawMessage),
+		processRequests: make(map[string]chan json.RawMessage),
 	}
 }
 
@@ -113,6 +118,8 @@ func (h *Hub) readPump(conn *websocket.Conn, agentID string) {
 			h.handleFileTransferResult(msg.Payload)
 		case "dir_list_result":
 			h.handleDirListResult(message)
+		case "process_list_result":
+			h.handleProcessListResult(message)
 		default:
 			slog.Debug("ws unknown message type", "type", msg.Type)
 		}
@@ -186,6 +193,66 @@ func (h *Hub) handleDirListResult(rawMessage []byte) {
 		}
 		json.Unmarshal(rawMessage, &msg)
 		ch <- msg.Payload
+	}
+}
+
+func (h *Hub) handleProcessListResult(rawMessage []byte) {
+	var envelope struct {
+		Payload struct {
+			RequestID string `json:"request_id"`
+		} `json:"payload"`
+	}
+	if err := json.Unmarshal(rawMessage, &envelope); err != nil {
+		slog.Warn("invalid process_list_result", "error", err)
+		return
+	}
+
+	h.processRequestsMu.Lock()
+	ch, ok := h.processRequests[envelope.Payload.RequestID]
+	if ok {
+		delete(h.processRequests, envelope.Payload.RequestID)
+	}
+	h.processRequestsMu.Unlock()
+
+	if ok {
+		var msg struct {
+			Payload json.RawMessage `json:"payload"`
+		}
+		json.Unmarshal(rawMessage, &msg)
+		ch <- msg.Payload
+	}
+}
+
+// ListProcesses sends a process_list command to an agent and waits for the response
+func (h *Hub) ListProcesses(agentID string) (json.RawMessage, error) {
+	requestID := fmt.Sprintf("proc_%d", time.Now().UnixNano())
+
+	ch := make(chan json.RawMessage, 1)
+	h.processRequestsMu.Lock()
+	h.processRequests[requestID] = ch
+	h.processRequestsMu.Unlock()
+
+	defer func() {
+		h.processRequestsMu.Lock()
+		delete(h.processRequests, requestID)
+		h.processRequestsMu.Unlock()
+	}()
+
+	msg := models.WSMessage{
+		Type: "process_list",
+		Payload: map[string]interface{}{
+			"request_id": requestID,
+		},
+	}
+	if err := h.SendToAgent(agentID, msg); err != nil {
+		return nil, err
+	}
+
+	select {
+	case result := <-ch:
+		return result, nil
+	case <-time.After(15 * time.Second):
+		return nil, fmt.Errorf("timeout waiting for process listing")
 	}
 }
 
